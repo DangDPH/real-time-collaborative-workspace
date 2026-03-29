@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Text, Transformer } from 'react-konva';
 import { Html } from 'react-konva-utils';
 
-const Shape_Text = ({ shapeProps, isSelected, onSelect, onChange }) => {
+const Shape_Text = ({ shapeProps, isSelected, onSelect, onChange, outlineThickness }) => {
   const shapeRef = useRef();
   const trRef = useRef();
   const [isEditing, setIsEditing] = useState(false);
@@ -95,6 +95,8 @@ const Shape_Text = ({ shapeProps, isSelected, onSelect, onChange }) => {
         <Transformer
           ref={trRef}
           enabledAnchors={['middle-left', 'middle-right', 'top-left', 'top-right', 'bottom-left', 'bottom-right']}
+          borderStrokeWidth={outlineThickness}
+          borderStroke='#7FB9F9'
         />
       )}
     </React.Fragment>

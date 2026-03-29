@@ -4,6 +4,11 @@ import { v4 as uuidv4 } from 'uuid';
 import ShapeRenderer from './shape_renderer';
 import ShapeSelector from './shapes/Shape_Selector';
 
+import io from 'socket.io-client';
+import axios from 'axios';
+
+const socket = io('http://localhost:5000'); // CONNECT TO BACKEND SERVER IN HẺRE
+
 const Whiteboard = () => {
   const sidebarWidth = 250; 
   
@@ -19,12 +24,37 @@ const Whiteboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    // Fetch initial shapes from the server when the component mounts
+    socket.on('receive-shape', (incomingShape) => {
+      setShapes((prev) => {
+        const index = prev.findIndex((s) => s.id === incomingShape.id);
+        if (index > -1) {
+          // if shape already exists, update it
+          const newShapes = [...prev];
+          newShapes[index] = incomingShape;
+          return newShapes;
+        }
+        // if shape is new, add it to the list
+        return [...prev, incomingShape];
+      });
+    });
+
+    // fetch initial shapes from the server when the component mounts
+    socket.on('delete-shape', (deletedId) => {
+      setShapes((prev) => prev.filter((s) => s.id !== deletedId));
+    });
+
+    return () => socket.off(); // cleanup listeners on unmount
+  }, []);
+
   const [shapes, setShapes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
 
   const [mode, setMode] = useState('select'); 
   const [brushColor, setBrushColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
+  const outlineThickness = 2; // mặc định và cố định, slider đã ẩn
 
   const isDrawing = useRef(false);
 
@@ -40,7 +70,9 @@ const Whiteboard = () => {
         x: 100, 
         y: 100, 
         data: svgData, 
-        fill: '#8b5cf6', 
+        fill: 'none', 
+        stroke: '#000000',
+        strokeWidth: 2,
         scaleX: 1, 
         scaleY: 1, 
         rotation: 0 
@@ -71,6 +103,7 @@ const Whiteboard = () => {
     }
 
     setShapes([...shapes, newShape]);
+    socket.emit('send-shape', newShape);
     setMode('select'); 
   };
 
@@ -118,8 +151,12 @@ const Whiteboard = () => {
     const newShapes = shapes.slice();
     const index = newShapes.findIndex(s => s.id === selectedId);
     if (index !== -1) {
+      const updatedShape = { ...newShapes[index], [key]: value };
       newShapes[index] = { ...newShapes[index], [key]: value };
       setShapes(newShapes);
+
+      // Emit the updated shape to the server
+      socket.emit('send-shape', updatedShape);
     }
   };
 
@@ -183,6 +220,8 @@ const Whiteboard = () => {
                   />
                 </div>
 
+    
+
                 {/* Text Specific Options */}
                 {selectedShape.type === 'TEXT' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '5px', borderTop: '1px solid #ddd', paddingTop: '10px' }}>
@@ -230,12 +269,25 @@ const Whiteboard = () => {
                       />
                     </div>
                     {(selectedShape.strokeWidth || 0) > 0 && (
-                      <input 
-                        type="color" 
-                        value={selectedShape.stroke || '#000000'} 
-                        onChange={(e) => updateSelectedShape('stroke', e.target.value)}
-                        style={{ width: '100%', height: '30px', cursor: 'pointer', border: 'none' }}
-                      />
+                      <>
+                        <input 
+                          type="color" 
+                          value={selectedShape.stroke || '#000000'} 
+                          onChange={(e) => updateSelectedShape('stroke', e.target.value)}
+                          style={{ width: '100%', height: '30px', cursor: 'pointer', border: 'none' }}
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '11px' }}>Outline Width: {selectedShape.strokeWidth}px</label>
+                          <input 
+                            type="range" 
+                            min="1" 
+                            max="20" 
+                            value={selectedShape.strokeWidth} 
+                            onChange={(e) => updateSelectedShape('strokeWidth', parseInt(e.target.value))}
+                            style={{ width: '100%', cursor: 'pointer' }}
+                          />
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
@@ -278,12 +330,17 @@ const Whiteboard = () => {
           <Layer>
             {shapes.map((shape, i) => (
               <ShapeRenderer
-                key={shape.id} shape={shape} isSelected={shape.id === selectedId}
+                key={shape.id}
+                shape={shape}
+                isSelected={shape.id === selectedId}
+                outlineThickness={outlineThickness}
                 onSelect={() => { if(mode === 'select') setSelectedId(shape.id); }}
                 onChange={(newAttrs) => {
                   const newShapes = [...shapes];
                   newShapes[i] = newAttrs;
                   setShapes(newShapes);
+
+                  socket.emit('send-shape', newAttrs); // Emit the updated shape to the server
                 }}
               />
             ))}

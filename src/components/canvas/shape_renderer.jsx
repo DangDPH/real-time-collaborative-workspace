@@ -11,7 +11,7 @@ const ShapeComponents = {
   // Add other shape types here
 };
 
-const ShapeRenderer = ({ shape, isSelected, onSelect, onChange }) => {
+const ShapeRenderer = ({ shape, isSelected, onSelect, onChange, outlineThickness }) => {
   // Find exact Component based on type
   const SpecificShape = ShapeComponents[shape.type];
 
@@ -23,6 +23,7 @@ const ShapeRenderer = ({ shape, isSelected, onSelect, onChange }) => {
       isSelected={isSelected}
       onSelect={onSelect}
       onChange={onChange}
+      outlineThickness={outlineThickness}
     />
   );
 };

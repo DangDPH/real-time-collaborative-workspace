@@ -3,22 +3,38 @@ import React, { useState } from 'react';
 // Configuration for all shapes available in the picker
 const SHAPE_CATEGORIES = [
   {
+    categoryName: 'Rectangles',
+    shapes: [
+      { id: 'rect', icon: '▭', type: 'SVG_PATH', data: 'M 0 0 H 100 V 100 H 0 Z' },
+      { id: 'rect_round', icon: '▢', type: 'SVG_PATH', data: 'M 20,0 H 80 A 20,20 0 0 1 100,20 V 80 A 20,20 0 0 1 80,100 H 20 A 20,20 0 0 1 0,80 V 20 A 20,20 0 0 1 20,0' },
+      { id: 'rect_cut', icon: '◪', type: 'SVG_PATH', data: 'M 20 0 L 100 0 L 100 100 L 0 100 L 0 20 Z' },
+      {id: 'rect_fold', icon: '▣', type: 'SVG_PATH', data: 'M 0 0 H 80 L 100 20 V 100 H 0 Z M 80 0 V 20 H 100'}
+    ]
+  },
+
+  {
+    categoryName: 'Lines',
+    shapes: [
+      { id: 'straight_line', icon: '-', type: 'SVG_PATH', data: 'M 0 50 L 100 50' },
+      { id: 'arrow_right', icon: '→', type: 'SVG_PATH', data: 'M 0 50 L 80 50 M 80 50 L 70 40 M 80 50 L 70 60' },
+      { id: 'arrow_left', icon: '←', type: 'SVG_PATH', data: 'M 100 50 L 20 50 M 20 50 L 30 40 M 20 50 L 30 60' },
+      { id: 'arrow_up', icon: '↑', type: 'SVG_PATH', data: 'M 50 100 L 50 20 M 50 20 L 40 30 M 50 20 L 60 30' },
+      { id: 'arrow_down', icon: '↓', type: 'SVG_PATH', data: 'M 50 0 L 50 80 M 50 80 L 40 70 M 50 80 L 60 70' },
+    ]
+  },
+
+  {
     categoryName: 'Basic Shapes',
     shapes: [
-      { id: 'text', icon: '🔤', type: 'TEXT' },
-
-      // Standard geometry primitives handled by specific components
-      { id: 'rect', icon: '■', type: 'RECTANGLE' },
-      { id: 'circle', icon: '●', type: 'CIRCLE' },
-      { id: 'straight_line', icon: '➖', type: 'STRAIGHT_LINE' },
-      
-      // Complex shapes handled by the SVG_PATH (Shape_SVG) component
-      { id: 'triangle', icon: '△', type: 'SVG_PATH', data: 'M 50 0 L 100 100 L 0 100 Z' },
-      { id: 'diamond', icon: '◇', type: 'SVG_PATH', data: 'M 50 0 L 100 50 L 50 100 L 0 50 Z' },
-      { id: 'pentagon', icon: '⬠', type: 'SVG_PATH', data: 'M 50 0 L 100 38 L 81 100 L 19 100 L 0 38 Z' },
+      { id: 'circle', icon: '●', type: 'SVG_PATH', data: 'M 50,0 A 50,50 0 1,1 50,100 A 50,50 0 1,1 50,0' },
+      { id: 'ellipse', icon: '⬭', type: 'SVG_PATH', data: 'M 50,20 A 50,30 0 1,1 50,80 A 50,30 0 1,1 50,20' },
+      { id: 'triangle', icon: '▲', type: 'SVG_PATH', data: 'M 50 0 L 100 100 L 0 100 Z' },
+      { id: 'right_triangle', icon: '◢', type: 'SVG_PATH', data: 'M 0 0 L 100 100 L 0 100 Z' },
+      { id: 'diamond', icon: '◆', type: 'SVG_PATH', data: 'M 50 0 L 100 50 L 50 100 L 0 50 Z' },
+      { id: 'parallelogram', icon: '▱', type: 'SVG_PATH', data: 'M 25 0 L 100 0 L 75 100 L 0 100 Z' },
+      { id: 'trapezoid', icon: '⏢', type: 'SVG_PATH', data: 'M 20 0 L 80 0 L 100 100 L 0 100 Z' },
       { id: 'hexagon', icon: '⬡', type: 'SVG_PATH', data: 'M 25 0 L 75 0 L 100 50 L 75 100 L 25 100 L 0 50 Z' },
-      { id: 'star', icon: '★', type: 'SVG_PATH', data: 'M 50 0 L 61 35 L 98 35 L 68 57 L 79 91 L 50 70 L 21 91 L 32 57 L 2 35 L 39 35 Z' },
-      { id: 'parallelogram', icon: '▱', type: 'SVG_PATH', data: 'M 25 0 L 100 0 L 75 100 L 0 100 Z' }
+      { id: 'octagon', icon: '⯃', type: 'SVG_PATH', data: 'M 30 0 L 70 0 L 100 30 L 100 70 L 70 100 L 30 100 L 0 70 L 0 30 Z' },
     ]
   },
   {
@@ -28,13 +44,14 @@ const SHAPE_CATEGORIES = [
       { id: 'arrow_left', icon: '⇦', type: 'SVG_PATH', data: 'M 100 25 L 50 25 L 50 0 L 0 50 L 50 100 L 50 75 L 100 75 Z' },
       { id: 'arrow_up', icon: '⇧', type: 'SVG_PATH', data: 'M 25 100 L 25 50 L 0 50 L 50 0 L 100 50 L 75 50 L 75 100 Z' },
       { id: 'arrow_down', icon: '⇩', type: 'SVG_PATH', data: 'M 25 0 L 25 50 L 0 50 L 50 100 L 100 50 L 75 50 L 75 0 Z' },
+      { id: 'arrow_double', icon: '↔️', type: 'SVG_PATH', data: 'M 0 50 L 25 25 V 40 H 75 V 25 L 100 50 L 75 75 V 60 H 25 V 75 Z' },
     ]
   },
   {
     categoryName: 'Equation Shapes',
     shapes: [
-      { id: 'plus', icon: '➕', type: 'SVG_PATH', data: 'M 35 0 L 65 0 L 65 35 L 100 35 L 100 65 L 65 65 L 65 100 L 35 100 L 35 65 L 0 65 L 0 35 L 35 35 Z' },
-      { id: 'minus', icon: '➖', type: 'SVG_PATH', data: 'M 0 35 L 100 35 L 100 65 L 0 65 Z' },
+      { id: 'plus', icon: '+', type: 'SVG_PATH', data: 'M 35 0 L 65 0 L 65 35 L 100 35 L 100 65 L 65 65 L 65 100 L 35 100 L 35 65 L 0 65 L 0 35 L 35 35 Z' },
+      { id: 'minus', icon: '-', type: 'SVG_PATH', data: 'M 0 35 L 100 35 L 100 65 L 0 65 Z' },
       { id: 'multiply', icon: '✖', type: 'SVG_PATH', data: 'M 20 0 L 50 30 L 80 0 L 100 20 L 70 50 L 100 80 L 80 100 L 50 70 L 20 100 L 0 80 L 30 50 L 0 20 Z' },
       { id: 'divide', icon: '➗', type: 'SVG_PATH', data: 'M 40 0 A 10 10 0 1 1 60 0 A 10 10 0 1 1 40 0 M 0 45 L 100 45 L 100 55 L 0 55 Z M 40 100 A 10 10 0 1 1 60 100 A 10 10 0 1 1 40 100' },
     ]
@@ -66,10 +83,10 @@ const ShapeSelector = ({ onSelectShape }) => {
 
   // Grid layout that wraps icons to the next line instead of using a horizontal scrollbar
   const gridWrapStyle = { 
-    display: 'flex', 
-    flexWrap: 'wrap', // This allows icons to push to the next row when they exceed width
-    gap: '6px', 
-    paddingBottom: '8px' 
+    display: 'grid', 
+    gridTemplateColumns: 'repeat(auto-fill, minmax(32px, 1fr))', // This allows icons to push to the next row when they exceed width
+    gap: '4px', 
+    paddingBottom: '5px 0' 
   };
 
   const itemStyle = {
