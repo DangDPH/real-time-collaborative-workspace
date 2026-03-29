@@ -18,5 +18,6 @@ A simple **real-time canvas whiteboard** built with React and Konva.
 ## 📦 Installation
 
 ```bash
+GO TO FILE src/whiteboard-app
 npm install
 npm run dev
