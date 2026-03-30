@@ -16,7 +16,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"], # Allow GET, POST, PUT, DELETE
     allow_headers=["*"],
-)
+) 
 
 # 3. Startup and Shutdown Events
 # Wire up the database connection functions to run automatically
