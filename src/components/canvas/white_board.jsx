@@ -64,33 +64,26 @@ const Whiteboard = () => {
 
   // FIXED: Optimized function to add new shapes without "not implemented" error
   const handleSelectShape = (type, svgData = null) => {
-    // For TEXT type, create textbox directly on canvas
-    if (type === 'TEXT') {
-      const newTextBox = {
-        id: uuidv4(),
-        x: 200,
-        y: 150,
-        width: 400,
-        height: 220,
-        content: '',
-        fontSize: 16,
-        fontFamily: 'Arial',
-        textAlign: 'left',
-        bold: false,
-        italic: false,
-        underline: false,
-        color: '#000000',
-      };
-      setTextBoxes([...textBoxes, newTextBox]);
-      setSelectedTextBoxId(newTextBox.id);
-      setSelectedId(null);
-      return;
-    }
-
     let newShape = null;
 
-    // 2. Generic SVG Path handler for complex shapes
-    if (type === 'SVG_PATH') {
+    if (type === 'TEXT') {
+      newShape = {
+        id: uuidv4(),
+        type: 'TEXT',
+        x: 100,
+        y: 100,
+        text: 'Double click to edit', 
+        fontSize: 16,
+        fontFamily: 'Arial',
+        align: 'left', 
+        fontStyle: 'normal',
+        textDecoration: '',
+        fill: '#000000',
+        width: 250, 
+        rotation: 0 
+      };
+
+      } else if (type === 'SVG_PATH') {
       newShape = { 
         id: uuidv4(), 
         type: 'SVG_PATH', 
@@ -104,7 +97,18 @@ const Whiteboard = () => {
         scaleY: 1, 
         rotation: 0 
       };
-    }
+      
+      if (!newShape) {
+      alert('Shape type not supported: ' + type);
+      return;
+      }
+
+      setShapes([...shapes, newShape]);
+      socket.emit('send-shape', newShape);
+      setMode('select'); 
+      setSelectedId(newShape.id); // choose the new shape immediately after adding
+      setSelectedTextBoxId(null); // clear text box selection if any
+    };
 
     // Safety check to ensure the shape type is handled
     if (!newShape) {
@@ -115,6 +119,7 @@ const Whiteboard = () => {
     setShapes([...shapes, newShape]);
     socket.emit('send-shape', newShape);
     setMode('select'); 
+    setSelectedId(newShape.id);
   };
 
   const handleClearAll = () => {
@@ -242,32 +247,97 @@ const Whiteboard = () => {
                 {/* Text Specific Options */}
                 {selectedShape.type === 'TEXT' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '5px', borderTop: '1px solid #ddd', paddingTop: '10px' }}>
+                    
+                    {/* Font Size: Đổi từ Slider sang Number Input */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <label style={{ fontSize: '11px' }}>Font Size:</label>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Size:</label>
                       <input 
                         type="number" 
-                        value={selectedShape.fontSize} 
+                        min="8" max="150"
+                        value={selectedShape.fontSize || 16} 
                         onChange={(e) => updateSelectedShape('fontSize', parseInt(e.target.value))}
-                        style={{ width: '60px' }}
+                        style={{ width: '60px', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }}
                       />
+                      <span style={{ fontSize: '11px' }}>px</span>
                     </div>
+
+                    {/* Font Size: Đổi từ Slider sang Number Input */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                       {/* ... code size hiện tại của bạn ... */}
+                    </div>
+
+                    {/* 👇 THÊM ĐOẠN NÀY ĐỂ CHỌN FONT CHỮ 👇 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Font:</label>
+                      <select
+                        value={selectedShape.fontFamily || 'Arial'}
+                        onChange={(e) => updateSelectedShape('fontFamily', e.target.value)}
+                        style={{
+                          padding: '6px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                          width: '100%',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Comic Sans MS">Comic Sans</option>
+                      </select>
+                    </div>
+
+                    {/* Alignment: Giao diện giống Word + Justify */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Alignment:</label>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {[
+                          { id: 'left', path: 'M2 3h12v2H2z M2 7h8v2H2z M2 11h12v2H2z' },
+                          { id: 'center', path: 'M2 3h12v2H2z M4 7h8v2H4z M2 11h12v2H2z' },
+                          { id: 'right', path: 'M2 3h12v2H2z M6 7h10v2H6z M2 11h12v2H2z' },
+                          { id: 'justify', path: 'M2 3h12v2H2z M2 7h12v2H2z M2 11h12v2H2z' }
+                        ].map((align) => (
+                          <button
+                            key={align.id}
+                            onClick={() => updateSelectedShape('align', align.id)}
+                            style={{
+                              flex: 1, padding: '6px', cursor: 'pointer', borderRadius: '4px',
+                              border: selectedShape.align === align.id ? '2px solid #3b82f6' : '1px solid #ccc',
+                              backgroundColor: selectedShape.align === align.id ? '#eff6ff' : '#fff',
+                              color: selectedShape.align === align.id ? '#3b82f6' : '#4b5563',
+                              display: 'flex', justifyContent: 'center', alignItems: 'center'
+                            }}
+                            title={`Align ${align.id}`}
+                          >
+                            <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+                              <path d={align.path} />
+                            </svg>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Các nút B, I, U (Giữ nguyên hoặc dùng code cập nhật này) */}
                     <div style={{ display: 'flex', gap: '5px' }}>
                       <button 
-                        style={{ padding: '5px 10px', fontWeight: 'bold', border: selectedShape.fontStyle.includes('bold') ? '2px solid #3b82f6' : '1px solid #ccc', cursor: 'pointer' }}
+                        style={{ flex: 1, padding: '5px 10px', fontWeight: 'bold', borderRadius: '4px', border: selectedShape.fontStyle?.includes('bold') ? '2px solid #3b82f6' : '1px solid #ccc', backgroundColor: selectedShape.fontStyle?.includes('bold') ? '#eff6ff' : '#fff', cursor: 'pointer' }}
                         onClick={() => {
-                          const current = selectedShape.fontStyle;
+                          const current = selectedShape.fontStyle || '';
                           updateSelectedShape('fontStyle', current.includes('bold') ? current.replace('bold', '').trim() : `${current} bold`);
                         }}
                       >B</button>
                       <button 
-                        style={{ padding: '5px 10px', fontStyle: 'italic', border: selectedShape.fontStyle.includes('italic') ? '2px solid #3b82f6' : '1px solid #ccc', cursor: 'pointer' }}
+                        style={{ flex: 1, padding: '5px 10px', fontStyle: 'italic', borderRadius: '4px', border: selectedShape.fontStyle?.includes('italic') ? '2px solid #3b82f6' : '1px solid #ccc', backgroundColor: selectedShape.fontStyle?.includes('italic') ? '#eff6ff' : '#fff', cursor: 'pointer' }}
                         onClick={() => {
-                          const current = selectedShape.fontStyle;
+                          const current = selectedShape.fontStyle || '';
                           updateSelectedShape('fontStyle', current.includes('italic') ? current.replace('italic', '').trim() : `${current} italic`);
                         }}
                       >I</button>
                       <button 
-                        style={{ padding: '5px 10px', textDecoration: 'underline', border: selectedShape.textDecoration === 'underline' ? '2px solid #3b82f6' : '1px solid #ccc', cursor: 'pointer' }}
+                        style={{ flex: 1, padding: '5px 10px', textDecoration: 'underline', borderRadius: '4px', border: selectedShape.textDecoration === 'underline' ? '2px solid #3b82f6' : '1px solid #ccc', backgroundColor: selectedShape.textDecoration === 'underline' ? '#eff6ff' : '#fff', cursor: 'pointer' }}
                         onClick={() => updateSelectedShape('textDecoration', selectedShape.textDecoration === 'underline' ? 'none' : 'underline')}
                       >U</button>
                     </div>
@@ -317,163 +387,6 @@ const Whiteboard = () => {
                   style={{ ...buttonStyle, backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', justifyContent: 'center', marginTop: '10px' }}
                 >
                   🗑️ Delete Selected
-                </button>
-              </>
-            )}
-
-            {/* TEXT BOX FORMATTING OPTIONS */}
-            {selectedTextBoxId && textBoxes.find(t => t.id === selectedTextBoxId) && (
-              <>
-                <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#3b82f6', marginTop: '12px' }}>TEXT BOX FORMATTING</div>
-                
-                {/* Font Size */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '11px' }}>Size: {textBoxes.find(t => t.id === selectedTextBoxId)?.fontSize}px</label>
-                  <input 
-                    type="range" 
-                    min="8"
-                    max="48"
-                    value={textBoxes.find(t => t.id === selectedTextBoxId)?.fontSize || 16}
-                    onChange={(e) => {
-                      const updated = textBoxes.map(t =>
-                        t.id === selectedTextBoxId ? { ...t, fontSize: parseInt(e.target.value) } : t
-                      );
-                      setTextBoxes(updated);
-                    }}
-                    style={{ width: '100%', cursor: 'pointer' }}
-                  />
-                </div>
-
-                {/* Font Family */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '11px' }}>Font:</label>
-                  <select
-                    value={textBoxes.find(t => t.id === selectedTextBoxId)?.fontFamily || 'Arial'}
-                    onChange={(e) => {
-                      const updated = textBoxes.map(t =>
-                        t.id === selectedTextBoxId ? { ...t, fontFamily: e.target.value } : t
-                      );
-                      setTextBoxes(updated);
-                    }}
-                    style={{
-                      padding: '6px 10px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      width: '100%'
-                    }}
-                  >
-                    <option>Arial</option>
-                    <option>Times New Roman</option>
-                    <option>Courier New</option>
-                    <option>Georgia</option>
-                    <option>Verdana</option>
-                  </select>
-                </div>
-
-                {/* Text Alignment */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '11px' }}>Alignment:</label>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {['left', 'center', 'right'].map((align) => (
-                      <button
-                        key={align}
-                        onClick={() => {
-                          const updated = textBoxes.map(t =>
-                            t.id === selectedTextBoxId ? { ...t, textAlign: align } : t
-                          );
-                          setTextBoxes(updated);
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: '6px',
-                          border: textBoxes.find(t => t.id === selectedTextBoxId)?.textAlign === align ? '2px solid #3b82f6' : '1px solid #ccc',
-                          backgroundColor: textBoxes.find(t => t.id === selectedTextBoxId)?.textAlign === align ? '#eff6ff' : '#fff',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          borderRadius: '4px',
-                        }}
-                      >
-                        {align === 'left' ? '⬅️' : align === 'center' ? '⬇️' : '➡️'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Text Formatting (Bold, Italic, Underline) */}
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  <button
-                    onClick={() => {
-                      const updated = textBoxes.map(t =>
-                        t.id === selectedTextBoxId ? { ...t, bold: !t.bold } : t
-                      );
-                      setTextBoxes(updated);
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '6px',
-                      fontWeight: 'bold',
-                      border: textBoxes.find(t => t.id === selectedTextBoxId)?.bold ? '2px solid #3b82f6' : '1px solid #ccc',
-                      backgroundColor: textBoxes.find(t => t.id === selectedTextBoxId)?.bold ? '#eff6ff' : '#fff',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      borderRadius: '4px',
-                    }}
-                  >
-                    B
-                  </button>
-                  <button
-                    onClick={() => {
-                      const updated = textBoxes.map(t =>
-                        t.id === selectedTextBoxId ? { ...t, italic: !t.italic } : t
-                      );
-                      setTextBoxes(updated);
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '6px',
-                      fontStyle: 'italic',
-                      border: textBoxes.find(t => t.id === selectedTextBoxId)?.italic ? '2px solid #3b82f6' : '1px solid #ccc',
-                      backgroundColor: textBoxes.find(t => t.id === selectedTextBoxId)?.italic ? '#eff6ff' : '#fff',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      borderRadius: '4px',
-                    }}
-                  >
-                    I
-                  </button>
-                  <button
-                    onClick={() => {
-                      const updated = textBoxes.map(t =>
-                        t.id === selectedTextBoxId ? { ...t, underline: !t.underline } : t
-                      );
-                      setTextBoxes(updated);
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '6px',
-                      textDecoration: 'underline',
-                      border: textBoxes.find(t => t.id === selectedTextBoxId)?.underline ? '2px solid #3b82f6' : '1px solid #ccc',
-                      backgroundColor: textBoxes.find(t => t.id === selectedTextBoxId)?.underline ? '#eff6ff' : '#fff',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      borderRadius: '4px',
-                    }}
-                  >
-                    U
-                  </button>
-                </div>
-
-                {/* Delete Text Box */}
-                <button
-                  onClick={() => {
-                    setTextBoxes(textBoxes.filter(t => t.id !== selectedTextBoxId));
-                    setSelectedTextBoxId(null);
-                  }}
-                  style={{ ...buttonStyle, backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', justifyContent: 'center', marginTop: '8px' }}
-                >
-                  🗑️ Delete Text Box
                 </button>
               </>
             )}
