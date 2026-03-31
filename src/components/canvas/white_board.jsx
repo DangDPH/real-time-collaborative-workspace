@@ -3,7 +3,6 @@ import { Stage, Layer, Rect } from 'react-konva';
 import { v4 as uuidv4 } from 'uuid';
 import ShapeRenderer from './shape_renderer';
 import ShapeSelector from './shapes/Shape_Selector';
-import TextBox from '../TextBox';
 
 import io from 'socket.io-client';
 import axios from 'axios';
@@ -51,6 +50,9 @@ const Whiteboard = () => {
 
   const [shapes, setShapes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+
+  const [history, setHistory] = useState([[]]); // Lưu mảng các trạng thái của shapes
+  const [historyStep, setHistoryStep] = useState(0); // Vị trí hiện tại trong lịch sử
   
   const [textBoxes, setTextBoxes] = useState([]);
   const [selectedTextBoxId, setSelectedTextBoxId] = useState(null);
@@ -62,6 +64,32 @@ const Whiteboard = () => {
 
   const isDrawing = useRef(false);
 
+  // Hàm lưu trạng thái mới vào lịch sử
+  const commitToHistory = (newShapes) => {
+    // Cắt bỏ các "tương lai" nếu người dùng đang ở quá khứ mà lại vẽ thêm
+    const newHistory = history.slice(0, historyStep + 1);
+    newHistory.push(newShapes);
+    setHistory(newHistory);
+    setHistoryStep(newHistory.length - 1);
+  };
+
+  // Nút Undo
+  const handleUndo = () => {
+    if (historyStep === 0) return;
+    const prevStep = historyStep - 1;
+    setShapes(history[prevStep]);
+    setHistoryStep(prevStep);
+    // (Tùy chọn) Có thể bắn socket emit ở đây để báo cho người khác biết bạn vừa undo
+  };
+
+  // Nút Redo
+  const handleRedo = () => {
+    if (historyStep === history.length - 1) return;
+    const nextStep = historyStep + 1;
+    setShapes(history[nextStep]);
+    setHistoryStep(nextStep);
+  };
+
   // FIXED: Optimized function to add new shapes without "not implemented" error
   const handleSelectShape = (type, svgData = null) => {
     let newShape = null;
@@ -70,54 +98,33 @@ const Whiteboard = () => {
       newShape = {
         id: uuidv4(),
         type: 'TEXT',
-        x: 100,
-        y: 100,
+        x: 100, y: 100,
         text: 'Double click to edit', 
-        fontSize: 16,
-        fontFamily: 'Arial',
-        align: 'left', 
-        fontStyle: 'normal',
-        textDecoration: '',
-        fill: '#000000',
-        width: 250, 
-        rotation: 0 
+        fontSize: 16, fontFamily: 'Arial', align: 'left', 
+        fontStyle: 'normal', textDecoration: '', fill: '#000000',
+        width: 250, rotation: 0 
       };
-
-      } else if (type === 'SVG_PATH') {
+    } else if (type === 'SVG_PATH') {
       newShape = { 
         id: uuidv4(), 
         type: 'SVG_PATH', 
-        x: 100, 
-        y: 100, 
+        x: 100, y: 100, 
         data: svgData, 
-        fill: 'none', 
-        stroke: '#000000',
-        strokeWidth: 2,
-        scaleX: 1, 
-        scaleY: 1, 
-        rotation: 0 
+        fill: 'none', stroke: '#000000', strokeWidth: 2,
+        scaleX: 1, scaleY: 1, rotation: 0 
       };
-      
-      if (!newShape) {
-      alert('Shape type not supported: ' + type);
-      return;
-      }
+    }
 
-      setShapes([...shapes, newShape]);
-      socket.emit('send-shape', newShape);
-      setMode('select'); 
-      setSelectedId(newShape.id); // choose the new shape immediately after adding
-      setSelectedTextBoxId(null); // clear text box selection if any
-    };
-
-    // Safety check to ensure the shape type is handled
     if (!newShape) {
       alert('Shape type not supported: ' + type);
       return;
     }
 
-    setShapes([...shapes, newShape]);
+    const updatedShapes = [...shapes, newShape];
+    setShapes(updatedShapes);
+    commitToHistory(updatedShapes); // Lưu vào lịch sử để Undo được
     socket.emit('send-shape', newShape);
+    
     setMode('select'); 
     setSelectedId(newShape.id);
   };
@@ -125,6 +132,7 @@ const Whiteboard = () => {
   const handleClearAll = () => {
     if (window.confirm("Are you sure you want to delete the entire drawing board?")) {
       setShapes([]);
+      commitToHistory([]);
       setSelectedId(null);
     }
   };
@@ -144,7 +152,7 @@ const Whiteboard = () => {
       id: uuidv4(), 
       type: 'LINE', 
       tool: mode, 
-      points: [pos.x, pos.y], 
+      points: [pos.x, pos.y, pos.x, pos.y], 
       stroke: mode === 'eraser' ? '#ffffff' : brushColor, 
       strokeWidth: brushSize,
       tension: 0.5,
@@ -167,15 +175,21 @@ const Whiteboard = () => {
     setShapes(lastShapes);
   };
 
-  const handleMouseUp = () => isDrawing.current = false;
+  const handleMouseUp = () => {
+    if (isDrawing.current) {
+      isDrawing.current = false;
+      commitToHistory(shapes); // Lưu lại nét vẽ vào lịch sử khi nhả chuột
+    }
+  };
 
   const updateSelectedShape = (key, value) => {
     const newShapes = shapes.slice();
     const index = newShapes.findIndex(s => s.id === selectedId);
     if (index !== -1) {
       const updatedShape = { ...newShapes[index], [key]: value };
-      newShapes[index] = { ...newShapes[index], [key]: value };
+      newShapes[index] = updatedShape;
       setShapes(newShapes);
+      commitToHistory(newShapes);
 
       // Emit the updated shape to the server
       socket.emit('send-shape', updatedShape);
@@ -219,9 +233,36 @@ const Whiteboard = () => {
                     <input type="color" value={brushColor} onChange={(e) => setBrushColor(e.target.value)} style={{ width: '100%', height: '30px', cursor: 'pointer', border: 'none' }} />
                   </div>
                 )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={{ fontSize: '11px' }}>Size: {brushSize}px</label>
-                  <input type="range" min="1" max="50" value={brushSize} onChange={(e) => setBrushSize(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    
+                    {/* Thanh kéo Slider */}
+                    <input 
+                      type="range" min="1" max="40" 
+                      value={brushSize} 
+                      onChange={(e) => setBrushSize(parseInt(e.target.value))} 
+                      style={{ flex: 1, cursor: 'pointer' }} 
+                    />
+                    
+                    {/* Ô vuông chứa chấm tròn Preview */}
+                    <div style={{ 
+                      width: '40px', height: '40px', 
+                      display: 'flex', justifyContent: 'center', alignItems: 'center', 
+                      backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '6px',
+                      flexShrink: 0 
+                    }}>
+                      <div style={{
+                        width: `${brushSize}px`,
+                        height: `${brushSize}px`,
+                        backgroundColor: mode === 'eraser' ? '#e5e7eb' : brushColor, 
+                        borderRadius: '50%',
+                        transition: 'all 0.1s ease-out'
+                      }} />
+                    </div>
+
+                  </div>
                 </div>
               </>
             )}
@@ -233,16 +274,16 @@ const Whiteboard = () => {
                 
                 {/* Global Fill Color for Shapes & Text */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '11px' }}>Fill Color:</label>
+                  <label style={{ fontSize: '11px' }}>Outline Width: {selectedShape.strokeWidth}px</label>
                   <input 
-                    type="color" 
-                    value={selectedShape.fill || '#000000'} 
-                    onChange={(e) => updateSelectedShape('fill', e.target.value)}
-                    style={{ width: '100%', height: '30px', cursor: 'pointer', border: 'none' }}
+                    type="range" 
+                    min="1" 
+                    max="40" // <--- Đổi ở đây nếu muốn giới hạn cả viền shape
+                    value={selectedShape.strokeWidth} 
+                    onChange={(e) => updateSelectedShape('strokeWidth', parseInt(e.target.value))}
+                    style={{ width: '100%', cursor: 'pointer' }}
                   />
-                </div>
-
-    
+               </div>
 
                 {/* Text Specific Options */}
                 {selectedShape.type === 'TEXT' && (
@@ -259,11 +300,6 @@ const Whiteboard = () => {
                         style={{ width: '60px', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }}
                       />
                       <span style={{ fontSize: '11px' }}>px</span>
-                    </div>
-
-                    {/* Font Size: Đổi từ Slider sang Number Input */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                       {/* ... code size hiện tại của bạn ... */}
                     </div>
 
                     {/* 👇 THÊM ĐOẠN NÀY ĐỂ CHỌN FONT CHỮ 👇 */}
@@ -320,7 +356,7 @@ const Whiteboard = () => {
                       </div>
                     </div>
 
-                    {/* Các nút B, I, U (Giữ nguyên hoặc dùng code cập nhật này) */}
+                    {/* Các nút B, I, U */}
                     <div style={{ display: 'flex', gap: '5px' }}>
                       <button 
                         style={{ flex: 1, padding: '5px 10px', fontWeight: 'bold', borderRadius: '4px', border: selectedShape.fontStyle?.includes('bold') ? '2px solid #3b82f6' : '1px solid #ccc', backgroundColor: selectedShape.fontStyle?.includes('bold') ? '#eff6ff' : '#fff', cursor: 'pointer' }}
@@ -381,7 +417,9 @@ const Whiteboard = () => {
 
                 <button 
                   onClick={() => {
-                    setShapes(shapes.filter(s => s.id !== selectedId));
+                    const newShapesList = shapes.filter(s => s.id !== selectedId);
+                    setShapes(newShapesList);
+                    commitToHistory(newShapesList);
                     setSelectedId(null);
                   }}
                   style={{ ...buttonStyle, backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', justifyContent: 'center', marginTop: '10px' }}
@@ -400,6 +438,34 @@ const Whiteboard = () => {
         </div>
 
         <div style={{ flex: 1 }}></div>
+
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          <button 
+            style={{ 
+              ...buttonStyle, flex: 1, justifyContent: 'center', 
+              opacity: historyStep === 0 ? 0.5 : 1, 
+              cursor: historyStep === 0 ? 'not-allowed' : 'pointer' 
+            }} 
+            onClick={handleUndo}
+            disabled={historyStep === 0}
+            title="Undo (Hoàn tác)"
+          >
+            ↩️ Undo
+          </button>
+          
+          <button 
+            style={{ 
+              ...buttonStyle, flex: 1, justifyContent: 'center', 
+              opacity: historyStep === history.length - 1 ? 0.5 : 1, 
+              cursor: historyStep === history.length - 1 ? 'not-allowed' : 'pointer' 
+            }} 
+            onClick={handleRedo}
+            disabled={historyStep === history.length - 1}
+            title="Redo (Làm lại)"
+          >
+            ↪️ Redo
+          </button>
+        </div>
 
         <button style={{ ...buttonStyle, backgroundColor: '#fee2e2', color: '#ef4444', justifyContent: 'center' }} onClick={handleClearAll}>
           🗑️ Clear All
@@ -426,6 +492,7 @@ const Whiteboard = () => {
                   const newShapes = [...shapes];
                   newShapes[i] = newAttrs;
                   setShapes(newShapes);
+                  commitToHistory(newShapes);
 
                   socket.emit('send-shape', newAttrs); // Emit the updated shape to the server
                 }}
@@ -445,24 +512,6 @@ const Whiteboard = () => {
 
           </Layer>
         </Stage>
-
-        {textBoxes.map((box) => (
-          <TextBox
-            key={box.id}
-            box={box}
-            isSelected={selectedTextBoxId === box.id}
-            onSelect={(id) => {
-              setSelectedTextBoxId(id);
-              setSelectedId(null); // Bỏ chọn các shape khác khi chọn text
-            }}
-            onUpdate={(updatedBox) => {
-              const updatedBoxes = textBoxes.map((t) => 
-                t.id === updatedBox.id ? updatedBox : t
-              );
-              setTextBoxes(updatedBoxes);
-            }}
-          />
-        ))}
       </div>
     </div>
   );
