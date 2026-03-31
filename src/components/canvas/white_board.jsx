@@ -3,7 +3,7 @@ import { Stage, Layer, Rect } from 'react-konva';
 import { v4 as uuidv4 } from 'uuid';
 import ShapeRenderer from './shape_renderer';
 import ShapeSelector from './shapes/Shape_Selector';
-import TextInputModal from '../TextInputModal';
+import CanvasTextBox from '../CanvasTextBox';
 
 import io from 'socket.io-client';
 import axios from 'axios';
@@ -55,6 +55,8 @@ const Whiteboard = () => {
 
   const [shapes, setShapes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const [textBoxes, setTextBoxes] = useState([]);
+  const [selectedTextBoxId, setSelectedTextBoxId] = useState(null);
 
   const [mode, setMode] = useState('select'); 
   const [brushColor, setBrushColor] = useState('#000000');
@@ -65,10 +67,24 @@ const Whiteboard = () => {
 
   // FIXED: Optimized function to add new shapes without "not implemented" error
   const handleSelectShape = (type, svgData = null) => {
-    // For TEXT type, show modal instead
+    // For TEXT type, create textbox directly
     if (type === 'TEXT') {
-      setPendingTextShape({ type: 'TEXT', svgData: null });
-      setTextModalOpen(true);
+      const newTextBox = {
+        id: uuidv4(),
+        type: 'TEXT',
+        x: 150,
+        y: 150,
+        width: 400,
+        height: 220,
+        content: '<p>New text box</p>',
+        bold: false,
+        italic: false,
+        underline: false,
+        align: 'left',
+      };
+      setTextBoxes([...textBoxes, newTextBox]);
+      setSelectedTextBoxId(newTextBox.id);
+      setSelectedId(null);
       return;
     }
 
@@ -100,30 +116,6 @@ const Whiteboard = () => {
     setShapes([...shapes, newShape]);
     socket.emit('send-shape', newShape);
     setMode('select'); 
-  };
-
-  // Handle text submission from modal
-  const handleTextSubmit = (text) => {
-    const newShape = { 
-      id: uuidv4(), 
-      type: 'TEXT', 
-      x: 150, 
-      y: 150, 
-      width: 200, 
-      height: 50, 
-      text: text || 'New Text', 
-      fontSize: 18, 
-      fontStyle: 'normal', 
-      textDecoration: 'none', 
-      fill: '#000000',
-      rotation: 0
-    };
-    
-    setShapes([...shapes, newShape]);
-    socket.emit('send-shape', newShape);
-    setTextModalOpen(false);
-    setPendingTextShape(null);
-    setMode('select');
   };
 
   const handleClearAll = () => {
@@ -330,6 +322,54 @@ const Whiteboard = () => {
                 </button>
               </>
             )}
+
+            {/* Text Box Formatting Options */}
+            {selectedTextBoxId && textBoxes.find(t => t.id === selectedTextBoxId) && (
+              <>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#3b82f6', marginTop: '12px' }}>TEXT BOX FORMATTING</div>
+                
+                {/* Text Alignment */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '11px' }}>Alignment:</label>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {['left', 'center', 'right', 'justify'].map((align) => (
+                      <button
+                        key={align}
+                        onClick={() => {
+                          const updated = textBoxes.map(t =>
+                            t.id === selectedTextBoxId ? { ...t, align } : t
+                          );
+                          setTextBoxes(updated);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '6px',
+                          border: textBoxes.find(t => t.id === selectedTextBoxId)?.align === align ? '2px solid #3b82f6' : '1px solid #ccc',
+                          backgroundColor: textBoxes.find(t => t.id === selectedTextBoxId)?.align === align ? '#eff6ff' : '#fff',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          borderRadius: '4px',
+                        }}
+                      >
+                        {align === 'left' ? '⬅️' : align === 'center' ? '⬇️' : align === 'right' ? '➡️' : '📄'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Delete Text Box */}
+                <button
+                  onClick={() => {
+                    setTextBoxes(textBoxes.filter(t => t.id !== selectedTextBoxId));
+                    setSelectedTextBoxId(null);
+                  }}
+                  style={{ ...buttonStyle, backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', justifyContent: 'center', marginTop: '8px' }}
+                >
+                  🗑️ Delete Text Box
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -385,17 +425,32 @@ const Whiteboard = () => {
 
           </Layer>
         </Stage>
-      </div>
 
-      {/* Text Input Modal for adding text shapes */}
-      <TextInputModal 
-        isOpen={textModalOpen} 
-        onClose={() => {
-          setTextModalOpen(false);
-          setPendingTextShape(null);
-        }}
-        onSubmit={handleTextSubmit}
-      />
+        {/* Canvas Text Boxes */}
+        {textBoxes.map((box) => (
+          <CanvasTextBox
+            key={box.id}
+            box={box}
+            isSelected={box.id === selectedTextBoxId}
+            onSelect={(id) => {
+              setSelectedTextBoxId(id);
+              setSelectedId(null);
+            }}
+            onUpdate={(updated) => {
+              const idx = textBoxes.findIndex(t => t.id === updated.id);
+              if (idx !== -1) {
+                const newBoxes = [...textBoxes];
+                newBoxes[idx] = updated;
+                setTextBoxes(newBoxes);
+              }
+            }}
+            onDelete={(id) => {
+              setTextBoxes(textBoxes.filter(t => t.id !== id));
+              if (selectedTextBoxId === id) setSelectedTextBoxId(null);
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 };
