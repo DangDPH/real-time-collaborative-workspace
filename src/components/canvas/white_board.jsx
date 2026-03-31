@@ -3,7 +3,7 @@ import { Stage, Layer, Rect } from 'react-konva';
 import { v4 as uuidv4 } from 'uuid';
 import ShapeRenderer from './shape_renderer';
 import ShapeSelector from './shapes/Shape_Selector';
-import TextEditor from '../TextEditor';
+import TextInputModal from '../TextInputModal';
 
 import io from 'socket.io-client';
 import axios from 'axios';
@@ -13,13 +13,14 @@ const socket = io('http://localhost:5000'); // CONNECT TO BACKEND SERVER IN HẺ
 const Whiteboard = () => {
   const sidebarWidth = 250; 
   
-  // Mode: 'shapes' or 'text' - for switching between Shape Canvas and Text Editor
-  const [editorMode, setEditorMode] = useState('shapes');
-  
   const [stageSize, setStageSize] = useState({
     width: window.innerWidth - sidebarWidth,
     height: window.innerHeight,
   });
+
+  // Text Modal State
+  const [textModalOpen, setTextModalOpen] = useState(false);
+  const [pendingTextShape, setPendingTextShape] = useState(null);
 
   // Handle window resizing to keep the canvas responsive
   useEffect(() => {
@@ -64,10 +65,17 @@ const Whiteboard = () => {
 
   // FIXED: Optimized function to add new shapes without "not implemented" error
   const handleSelectShape = (type, svgData = null) => {
+    // For TEXT type, show modal instead
+    if (type === 'TEXT') {
+      setPendingTextShape({ type: 'TEXT', svgData: null });
+      setTextModalOpen(true);
+      return;
+    }
+
     let newShape = null;
 
     // 2. Generic SVG Path handler for complex shapes
-      if (type === 'SVG_PATH') {
+    if (type === 'SVG_PATH') {
       newShape = { 
         id: uuidv4(), 
         type: 'SVG_PATH', 
@@ -81,23 +89,6 @@ const Whiteboard = () => {
         scaleY: 1, 
         rotation: 0 
       };
-    } 
-    // 3. Text Box initialization
-      else if (type === 'TEXT') {
-      newShape = { 
-        id: uuidv4(), 
-        type: 'TEXT', 
-        x: 150, 
-        y: 150, 
-        width: 200, 
-        height: 50, 
-        text: 'Double click to edit', 
-        fontSize: 18, 
-        fontStyle: 'normal', 
-        textDecoration: 'none', 
-        fill: '#000000',
-        rotation: 0
-      };
     }
 
     // Safety check to ensure the shape type is handled
@@ -109,6 +100,30 @@ const Whiteboard = () => {
     setShapes([...shapes, newShape]);
     socket.emit('send-shape', newShape);
     setMode('select'); 
+  };
+
+  // Handle text submission from modal
+  const handleTextSubmit = (text) => {
+    const newShape = { 
+      id: uuidv4(), 
+      type: 'TEXT', 
+      x: 150, 
+      y: 150, 
+      width: 200, 
+      height: 50, 
+      text: text || 'New Text', 
+      fontSize: 18, 
+      fontStyle: 'normal', 
+      textDecoration: 'none', 
+      fill: '#000000',
+      rotation: 0
+    };
+    
+    setShapes([...shapes, newShape]);
+    socket.emit('send-shape', newShape);
+    setTextModalOpen(false);
+    setPendingTextShape(null);
+    setMode('select');
   };
 
   const handleClearAll = () => {
@@ -188,24 +203,6 @@ const Whiteboard = () => {
           <h2 style={{ margin: 0, fontSize: '20px', color: '#111827' }}>🎨 My Canvas</h2>
         </div>
 
-        {/* MODE TOGGLE: Shapes vs Text Editor */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-          <button 
-            style={{...buttonStyle, flex: 1, backgroundColor: editorMode === 'shapes' ? '#3b82f6' : '#e5e7eb', color: editorMode === 'shapes' ? 'white' : '#000', border: 'none'}} 
-            onClick={() => setEditorMode('shapes')}
-          >
-            📐 Shapes
-          </button>
-          <button 
-            style={{...buttonStyle, flex: 1, backgroundColor: editorMode === 'text' ? '#3b82f6' : '#e5e7eb', color: editorMode === 'text' ? 'white' : '#000', border: 'none'}} 
-            onClick={() => setEditorMode('text')}
-          >
-            📝 Text
-          </button>
-        </div>
-
-        {editorMode === 'shapes' && (
-          <>
         {/* TOOL SELECTION */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <button style={{...buttonStyle, borderColor: mode === 'select' ? '#3b82f6' : '#d1d5db'}} onClick={() => setMode('select')}>🖱️ Pointer</button>
@@ -347,14 +344,9 @@ const Whiteboard = () => {
         <button style={{ ...buttonStyle, backgroundColor: '#fee2e2', color: '#ef4444', justifyContent: 'center' }} onClick={handleClearAll}>
           🗑️ Clear All
         </button>
-          </>
-        )}
 
       </div>
 
-      {editorMode === 'text' ? (
-        <TextEditor onSwitchToShapes={() => setEditorMode('shapes')} />
-      ) : (
       <div style={canvasContainerStyle}>
         <Stage
           width={stageSize.width} height={stageSize.height}
@@ -394,7 +386,16 @@ const Whiteboard = () => {
           </Layer>
         </Stage>
       </div>
-      )}
+
+      {/* Text Input Modal for adding text shapes */}
+      <TextInputModal 
+        isOpen={textModalOpen} 
+        onClose={() => {
+          setTextModalOpen(false);
+          setPendingTextShape(null);
+        }}
+        onSubmit={handleTextSubmit}
+      />
     </div>
   );
 };
