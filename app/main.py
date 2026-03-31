@@ -12,7 +12,7 @@ app = FastAPI(title="Whiteboard API", version="1.0.0")
 # This tells the backend: "It is okay to accept requests from the frontend running on a different port."
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # Change this to your frontend URL (e.g., http://localhost:3000) in production
+    allow_origins=["http://localhost:5173"], 
     allow_credentials=True,
     allow_methods=["*"], # Allow GET, POST, PUT, DELETE
     allow_headers=["*"],
