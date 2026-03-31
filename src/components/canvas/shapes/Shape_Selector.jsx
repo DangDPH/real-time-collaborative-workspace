@@ -5,6 +5,7 @@ const SHAPE_CATEGORIES = [
   {
     categoryName: 'Rectangles',
     shapes: [
+      { id: 'square', icon: '■', type: 'SVG_PATH', data: 'M 0 0 H 100 V 100 H 0 Z' },
       { id: 'rect', icon: '▭', type: 'SVG_PATH', data: 'M 0 0 H 100 V 100 H 0 Z' },
       { id: 'rect_round', icon: '▢', type: 'SVG_PATH', data: 'M 20,0 H 80 A 20,20 0 0 1 100,20 V 80 A 20,20 0 0 1 80,100 H 20 A 20,20 0 0 1 0,80 V 20 A 20,20 0 0 1 20,0' },
       { id: 'rect_cut', icon: '◪', type: 'SVG_PATH', data: 'M 20 0 L 100 0 L 100 100 L 0 100 L 0 20 Z' },
@@ -74,7 +75,8 @@ const ShapeSelector = ({ onSelectShape }) => {
     backgroundColor: isOpen ? '#eff6ff' : '#f9fafb',
     border: '1px solid', borderColor: isOpen ? '#3b82f6' : '#d1d5db',
     borderRadius: '6px', textAlign: 'left', fontWeight: 'bold',
-    display: 'flex', justifyContent: 'space-between'
+    display: 'flex', justifyContent: 'space-between',
+    borderRadius: '12px'
   };
 
   const dropdownStyle = {

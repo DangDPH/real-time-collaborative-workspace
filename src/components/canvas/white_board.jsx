@@ -57,6 +57,12 @@ const Whiteboard = () => {
   const [textBoxes, setTextBoxes] = useState([]);
   const [selectedTextBoxId, setSelectedTextBoxId] = useState(null);
 
+  const GRID_OPTIONS = [0, 80, 40, 20];
+  const [gridIndex, setGridIndex] = useState(0); // Mặc định là 0 (Tắt lưới)
+  
+  const currentGridSize = GRID_OPTIONS[gridIndex];
+  const showGrid = currentGridSize > 0;
+
   const [mode, setMode] = useState('select'); 
   const [brushColor, setBrushColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
@@ -209,14 +215,14 @@ const Whiteboard = () => {
       <div style={sidebarStyle}>
         
         <div style={{ marginBottom: '10px', paddingBottom: '15px', borderBottom: '2px dashed #e5e7eb' }}>
-          <h2 style={{ margin: 0, fontSize: '20px', color: '#111827' }}>🎨 My Canvas</h2>
+          <h2 style={{ margin: 0, fontSize: '20px',fontFamily: 'Poppins, sans-serif', color: '#111827' }}>🎨 My Canvas</h2>
         </div>
 
         {/* TOOL SELECTION */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button style={{...buttonStyle, borderColor: mode === 'select' ? '#3b82f6' : '#d1d5db'}} onClick={() => setMode('select')}>🖱️ Pointer</button>
-          <button style={{...buttonStyle, borderColor: mode === 'pen' ? '#3b82f6' : '#d1d5db'}} onClick={() => { setMode('pen'); setSelectedId(null); }}>✏️ Drawing mode</button>
-          <button style={{...buttonStyle, borderColor: mode === 'eraser' ? '#3b82f6' : '#d1d5db'}} onClick={() => { setMode('eraser'); setSelectedId(null); }}>🧽 Eraser</button>
+          <button style={{...buttonStyle, borderRadius: '12px', borderColor: mode === 'select' ? '#3b82f6' : '#d1d5db'}} onClick={() => setMode('select')}>🖱️ Pointer</button>
+          <button style={{...buttonStyle, borderRadius: '12px', borderColor: mode === 'pen' ? '#3b82f6' : '#d1d5db'}} onClick={() => { setMode('pen'); setSelectedId(null); }}>✏️ Drawing mode</button>
+          <button style={{...buttonStyle, borderRadius: '12px', borderColor: mode === 'eraser' ? '#3b82f6' : '#d1d5db'}} onClick={() => { setMode('eraser'); setSelectedId(null); }}>🧽 Eraser</button>
         </div>
 
         {/* DYNAMIC SETTINGS AREA */}
@@ -273,17 +279,15 @@ const Whiteboard = () => {
                 <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#3b82f6' }}>STYLE SETTINGS</div>
                 
                 {/* Global Fill Color for Shapes & Text */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '11px' }}>Outline Width: {selectedShape.strokeWidth}px</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Color:</label>
                   <input 
-                    type="range" 
-                    min="1" 
-                    max="40" // <--- Đổi ở đây nếu muốn giới hạn cả viền shape
-                    value={selectedShape.strokeWidth} 
-                    onChange={(e) => updateSelectedShape('strokeWidth', parseInt(e.target.value))}
-                    style={{ width: '100%', cursor: 'pointer' }}
+                    type="color" 
+                    value={selectedShape.fill || '#000000'} 
+                    onChange={(e) => updateSelectedShape('fill', e.target.value)}
+                    style={{ width: '100%', height: '32px', cursor: 'pointer', border: '1px solid #d1d5db', borderRadius: '4px', padding: '0' }}
                   />
-               </div>
+                </div>
 
                 {/* Text Specific Options */}
                 {selectedShape.type === 'TEXT' && (
@@ -359,21 +363,21 @@ const Whiteboard = () => {
                     {/* Các nút B, I, U */}
                     <div style={{ display: 'flex', gap: '5px' }}>
                       <button 
-                        style={{ flex: 1, padding: '5px 10px', fontWeight: 'bold', borderRadius: '4px', border: selectedShape.fontStyle?.includes('bold') ? '2px solid #3b82f6' : '1px solid #ccc', backgroundColor: selectedShape.fontStyle?.includes('bold') ? '#eff6ff' : '#fff', cursor: 'pointer' }}
+                        style={{ flex: 1, padding: '5px 10px', fontWeight: 'bold', borderRadius: '12px', border: selectedShape.fontStyle?.includes('bold') ? '2px solid #3b82f6' : '1px solid #ccc', backgroundColor: selectedShape.fontStyle?.includes('bold') ? '#eff6ff' : '#fff', cursor: 'pointer' }}
                         onClick={() => {
                           const current = selectedShape.fontStyle || '';
                           updateSelectedShape('fontStyle', current.includes('bold') ? current.replace('bold', '').trim() : `${current} bold`);
                         }}
                       >B</button>
                       <button 
-                        style={{ flex: 1, padding: '5px 10px', fontStyle: 'italic', borderRadius: '4px', border: selectedShape.fontStyle?.includes('italic') ? '2px solid #3b82f6' : '1px solid #ccc', backgroundColor: selectedShape.fontStyle?.includes('italic') ? '#eff6ff' : '#fff', cursor: 'pointer' }}
+                        style={{ flex: 1, padding: '5px 10px', fontStyle: 'italic', borderRadius: '12px', border: selectedShape.fontStyle?.includes('italic') ? '2px solid #3b82f6' : '1px solid #ccc', backgroundColor: selectedShape.fontStyle?.includes('italic') ? '#eff6ff' : '#fff', cursor: 'pointer' }}
                         onClick={() => {
                           const current = selectedShape.fontStyle || '';
                           updateSelectedShape('fontStyle', current.includes('italic') ? current.replace('italic', '').trim() : `${current} italic`);
                         }}
                       >I</button>
                       <button 
-                        style={{ flex: 1, padding: '5px 10px', textDecoration: 'underline', borderRadius: '4px', border: selectedShape.textDecoration === 'underline' ? '2px solid #3b82f6' : '1px solid #ccc', backgroundColor: selectedShape.textDecoration === 'underline' ? '#eff6ff' : '#fff', cursor: 'pointer' }}
+                        style={{ flex: 1, padding: '5px 10px', textDecoration: 'underline', borderRadius: '12px', border: selectedShape.textDecoration === 'underline' ? '2px solid #3b82f6' : '1px solid #ccc', backgroundColor: selectedShape.textDecoration === 'underline' ? '#eff6ff' : '#fff', cursor: 'pointer' }}
                         onClick={() => updateSelectedShape('textDecoration', selectedShape.textDecoration === 'underline' ? 'none' : 'underline')}
                       >U</button>
                     </div>
@@ -422,7 +426,7 @@ const Whiteboard = () => {
                     commitToHistory(newShapesList);
                     setSelectedId(null);
                   }}
-                  style={{ ...buttonStyle, backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', justifyContent: 'center', marginTop: '10px' }}
+                  style={{ ...buttonStyle, borderRadius: '12px', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', justifyContent: 'center', marginTop: '10px' }}
                 >
                   🗑️ Delete Selected
                 </button>
@@ -440,11 +444,27 @@ const Whiteboard = () => {
         <div style={{ flex: 1 }}></div>
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          
+          <button 
+            style={{ 
+              ...buttonStyle, 
+              borderRadius: '12px', 
+              backgroundColor: showGrid ? '#eff6ff' : '#f9fafb',
+              borderColor: showGrid ? '#3b82f6' : '#d1d5db',
+              justifyContent: 'center',
+              width: '100%'
+            }} 
+            onClick={() => setGridIndex((prev) => (prev + 1) % GRID_OPTIONS.length)}
+          >
+            {showGrid ? `📏 Grid: ${currentGridSize}px` : '📏 Grid: OFF'}
+          </button>
+
           <button 
             style={{ 
               ...buttonStyle, flex: 1, justifyContent: 'center', 
               opacity: historyStep === 0 ? 0.5 : 1, 
-              cursor: historyStep === 0 ? 'not-allowed' : 'pointer' 
+              cursor: historyStep === 0 ? 'not-allowed' : 'pointer',
+              borderRadius: '12px' 
             }} 
             onClick={handleUndo}
             disabled={historyStep === 0}
@@ -457,7 +477,8 @@ const Whiteboard = () => {
             style={{ 
               ...buttonStyle, flex: 1, justifyContent: 'center', 
               opacity: historyStep === history.length - 1 ? 0.5 : 1, 
-              cursor: historyStep === history.length - 1 ? 'not-allowed' : 'pointer' 
+              cursor: historyStep === history.length - 1 ? 'not-allowed' : 'pointer' ,
+              borderRadius: '12px'
             }} 
             onClick={handleRedo}
             disabled={historyStep === history.length - 1}
@@ -467,7 +488,7 @@ const Whiteboard = () => {
           </button>
         </div>
 
-        <button style={{ ...buttonStyle, backgroundColor: '#fee2e2', color: '#ef4444', justifyContent: 'center' }} onClick={handleClearAll}>
+        <button style={{ ...buttonStyle, borderRadius: '12px', backgroundColor: '#fee2e2', color: '#ef4444', justifyContent: 'center' }} onClick={handleClearAll}>
           🗑️ Clear All
         </button>
 
@@ -480,6 +501,31 @@ const Whiteboard = () => {
           onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
           onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp}
         >
+
+          {showGrid && (
+            <Layer listening={false}>
+              {(() => {
+                const lines = [];
+                // grid color with very light opacity to avoid being too distracting
+                const gridColor = 'rgba(0, 0, 0, 0.16)'; 
+
+                // Vẽ nét dọc
+                for (let i = 0; i < stageSize.width / currentGridSize; i++) {
+                  lines.push(
+                    <Rect key={`v-${i}`} x={i * currentGridSize} y={0} width={1} height={stageSize.height} fill={gridColor} />
+                  );
+                }
+                // Vẽ nét ngang
+                for (let j = 0; j < stageSize.height / currentGridSize; j++) {
+                  lines.push(
+                    <Rect key={`h-${j}`} x={0} y={j * currentGridSize} width={stageSize.width} height={1} fill={gridColor} />
+                  );
+                }
+                return lines;
+              })()}
+            </Layer>
+          )}
+
           <Layer>
             {shapes.map((shape, i) => (
               <ShapeRenderer
@@ -489,12 +535,18 @@ const Whiteboard = () => {
                 outlineThickness={outlineThickness}
                 onSelect={() => { if(mode === 'select') setSelectedId(shape.id); }}
                 onChange={(newAttrs) => {
+                  const snappedAttrs = showGrid ? {
+                    ...newAttrs,
+                    x: Math.round(newAttrs.x / currentGridSize) * currentGridSize,
+                    y: Math.round(newAttrs.y / currentGridSize) * currentGridSize,
+                  } : newAttrs;
+
                   const newShapes = [...shapes];
-                  newShapes[i] = newAttrs;
+                  newShapes[i] = snappedAttrs;
                   setShapes(newShapes);
                   commitToHistory(newShapes);
 
-                  socket.emit('send-shape', newAttrs); // Emit the updated shape to the server
+                  socket.emit('send-shape', snappedAttrs); // Send updated shape to server
                 }}
               />
             ))}
