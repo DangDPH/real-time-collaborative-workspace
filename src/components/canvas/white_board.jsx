@@ -3,7 +3,7 @@ import { Stage, Layer, Rect } from 'react-konva';
 import { v4 as uuidv4 } from 'uuid';
 import ShapeRenderer from './shape_renderer';
 import ShapeSelector from './shapes/Shape_Selector';
-import CanvasTextBox from '../CanvasTextBox';
+import TextBox from '../TextBox';
 
 import io from 'socket.io-client';
 import axios from 'axios';
@@ -17,10 +17,6 @@ const Whiteboard = () => {
     width: window.innerWidth - sidebarWidth,
     height: window.innerHeight,
   });
-
-  // Text Modal State
-  const [textModalOpen, setTextModalOpen] = useState(false);
-  const [pendingTextShape, setPendingTextShape] = useState(null);
 
   // Handle window resizing to keep the canvas responsive
   useEffect(() => {
@@ -55,6 +51,7 @@ const Whiteboard = () => {
 
   const [shapes, setShapes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  
   const [textBoxes, setTextBoxes] = useState([]);
   const [selectedTextBoxId, setSelectedTextBoxId] = useState(null);
 
@@ -67,25 +64,26 @@ const Whiteboard = () => {
 
   // FIXED: Optimized function to add new shapes without "not implemented" error
   const handleSelectShape = (type, svgData = null) => {
-    // For TEXT type, create textbox directly
+    // For TEXT type, create textbox directly on canvas
     if (type === 'TEXT') {
       const newTextBox = {
         id: uuidv4(),
-        type: 'TEXT',
-        x: 150,
+        x: 200,
         y: 150,
         width: 400,
         height: 220,
-        content: '<p>New text box</p>',
+        content: '',
+        fontSize: 16,
+        fontFamily: 'Arial',
+        textAlign: 'left',
         bold: false,
         italic: false,
         underline: false,
-        align: 'left',
+        color: '#000000',
       };
       setTextBoxes([...textBoxes, newTextBox]);
       setSelectedTextBoxId(newTextBox.id);
-      setSelectedId(null); // Clear shape selection to focus on textbox
-      console.log('Created textbox:', newTextBox.id, 'selectedTextBoxId should be:', newTextBox.id);
+      setSelectedId(null);
       return;
     }
 
@@ -127,7 +125,6 @@ const Whiteboard = () => {
   };
 
   const handleMouseDown = (e) => {
-
     // Check if user clicked on empty area (not on any shape)
     const isOverlay = e.target.id() === 'drawing-overlay';
     const clickedOnEmpty = e.target === e.target.getStage() || isOverlay;
@@ -324,39 +321,148 @@ const Whiteboard = () => {
               </>
             )}
 
-            {/* Text Box Formatting Options */}
+            {/* TEXT BOX FORMATTING OPTIONS */}
             {selectedTextBoxId && textBoxes.find(t => t.id === selectedTextBoxId) && (
               <>
                 <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#3b82f6', marginTop: '12px' }}>TEXT BOX FORMATTING</div>
                 
+                {/* Font Size */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '11px' }}>Size: {textBoxes.find(t => t.id === selectedTextBoxId)?.fontSize}px</label>
+                  <input 
+                    type="range" 
+                    min="8"
+                    max="48"
+                    value={textBoxes.find(t => t.id === selectedTextBoxId)?.fontSize || 16}
+                    onChange={(e) => {
+                      const updated = textBoxes.map(t =>
+                        t.id === selectedTextBoxId ? { ...t, fontSize: parseInt(e.target.value) } : t
+                      );
+                      setTextBoxes(updated);
+                    }}
+                    style={{ width: '100%', cursor: 'pointer' }}
+                  />
+                </div>
+
+                {/* Font Family */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '11px' }}>Font:</label>
+                  <select
+                    value={textBoxes.find(t => t.id === selectedTextBoxId)?.fontFamily || 'Arial'}
+                    onChange={(e) => {
+                      const updated = textBoxes.map(t =>
+                        t.id === selectedTextBoxId ? { ...t, fontFamily: e.target.value } : t
+                      );
+                      setTextBoxes(updated);
+                    }}
+                    style={{
+                      padding: '6px 10px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      width: '100%'
+                    }}
+                  >
+                    <option>Arial</option>
+                    <option>Times New Roman</option>
+                    <option>Courier New</option>
+                    <option>Georgia</option>
+                    <option>Verdana</option>
+                  </select>
+                </div>
+
                 {/* Text Alignment */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={{ fontSize: '11px' }}>Alignment:</label>
                   <div style={{ display: 'flex', gap: '4px' }}>
-                    {['left', 'center', 'right', 'justify'].map((align) => (
+                    {['left', 'center', 'right'].map((align) => (
                       <button
                         key={align}
                         onClick={() => {
                           const updated = textBoxes.map(t =>
-                            t.id === selectedTextBoxId ? { ...t, align } : t
+                            t.id === selectedTextBoxId ? { ...t, textAlign: align } : t
                           );
                           setTextBoxes(updated);
                         }}
                         style={{
                           flex: 1,
                           padding: '6px',
-                          border: textBoxes.find(t => t.id === selectedTextBoxId)?.align === align ? '2px solid #3b82f6' : '1px solid #ccc',
-                          backgroundColor: textBoxes.find(t => t.id === selectedTextBoxId)?.align === align ? '#eff6ff' : '#fff',
+                          border: textBoxes.find(t => t.id === selectedTextBoxId)?.textAlign === align ? '2px solid #3b82f6' : '1px solid #ccc',
+                          backgroundColor: textBoxes.find(t => t.id === selectedTextBoxId)?.textAlign === align ? '#eff6ff' : '#fff',
                           cursor: 'pointer',
                           fontSize: '12px',
                           fontWeight: '500',
                           borderRadius: '4px',
                         }}
                       >
-                        {align === 'left' ? '⬅️' : align === 'center' ? '⬇️' : align === 'right' ? '➡️' : '📄'}
+                        {align === 'left' ? '⬅️' : align === 'center' ? '⬇️' : '➡️'}
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Text Formatting (Bold, Italic, Underline) */}
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button
+                    onClick={() => {
+                      const updated = textBoxes.map(t =>
+                        t.id === selectedTextBoxId ? { ...t, bold: !t.bold } : t
+                      );
+                      setTextBoxes(updated);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '6px',
+                      fontWeight: 'bold',
+                      border: textBoxes.find(t => t.id === selectedTextBoxId)?.bold ? '2px solid #3b82f6' : '1px solid #ccc',
+                      backgroundColor: textBoxes.find(t => t.id === selectedTextBoxId)?.bold ? '#eff6ff' : '#fff',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    B
+                  </button>
+                  <button
+                    onClick={() => {
+                      const updated = textBoxes.map(t =>
+                        t.id === selectedTextBoxId ? { ...t, italic: !t.italic } : t
+                      );
+                      setTextBoxes(updated);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '6px',
+                      fontStyle: 'italic',
+                      border: textBoxes.find(t => t.id === selectedTextBoxId)?.italic ? '2px solid #3b82f6' : '1px solid #ccc',
+                      backgroundColor: textBoxes.find(t => t.id === selectedTextBoxId)?.italic ? '#eff6ff' : '#fff',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    I
+                  </button>
+                  <button
+                    onClick={() => {
+                      const updated = textBoxes.map(t =>
+                        t.id === selectedTextBoxId ? { ...t, underline: !t.underline } : t
+                      );
+                      setTextBoxes(updated);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '6px',
+                      textDecoration: 'underline',
+                      border: textBoxes.find(t => t.id === selectedTextBoxId)?.underline ? '2px solid #3b82f6' : '1px solid #ccc',
+                      backgroundColor: textBoxes.find(t => t.id === selectedTextBoxId)?.underline ? '#eff6ff' : '#fff',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    U
+                  </button>
                 </div>
 
                 {/* Delete Text Box */}
@@ -391,7 +497,7 @@ const Whiteboard = () => {
       <div style={canvasContainerStyle}>
         <Stage
           width={stageSize.width} height={stageSize.height}
-          style={{ cursor: mode === 'pen' ? 'crosshair' : (mode === 'eraser' ? 'cell' : 'default') }}
+          style={{ cursor: mode === 'pen' ? 'crosshair' : (mode === 'eraser' ? 'cell' : 'default'), pointerEvents: 'auto' }}
           onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
           onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp}
         >
@@ -427,27 +533,20 @@ const Whiteboard = () => {
           </Layer>
         </Stage>
 
-        {/* Canvas Text Boxes */}
         {textBoxes.map((box) => (
-          <CanvasTextBox
+          <TextBox
             key={box.id}
             box={box}
-            isSelected={box.id === selectedTextBoxId}
+            isSelected={selectedTextBoxId === box.id}
             onSelect={(id) => {
               setSelectedTextBoxId(id);
-              setSelectedId(null);
+              setSelectedId(null); // Bỏ chọn các shape khác khi chọn text
             }}
-            onUpdate={(updated) => {
-              const idx = textBoxes.findIndex(t => t.id === updated.id);
-              if (idx !== -1) {
-                const newBoxes = [...textBoxes];
-                newBoxes[idx] = updated;
-                setTextBoxes(newBoxes);
-              }
-            }}
-            onDelete={(id) => {
-              setTextBoxes(textBoxes.filter(t => t.id !== id));
-              if (selectedTextBoxId === id) setSelectedTextBoxId(null);
+            onUpdate={(updatedBox) => {
+              const updatedBoxes = textBoxes.map((t) => 
+                t.id === updatedBox.id ? updatedBox : t
+              );
+              setTextBoxes(updatedBoxes);
             }}
           />
         ))}

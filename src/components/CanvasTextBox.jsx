@@ -99,13 +99,23 @@ const CanvasTextBox = ({
         boxShadow: isSelected
           ? '0 16px 32px rgba(77,166,255,0.18)'
           : '0 10px 24px rgba(15, 23, 42, 0.12)',
+        pointerEvents: 'auto',
       }}
       onClick={(e) => {
+        e.preventDefault();
         e.stopPropagation();
+        console.log('TextBox clicked, setting selectedTextBoxId to:', box.id);
         onSelect(box.id);
       }}
       onMouseDown={(e) => {
+        // Prevent clicks on textbox from affecting canvas
+        e.preventDefault();
+        e.stopPropagation();
         onMouseDown?.(e);
+      }}
+      onKeyDown={(e) => {
+        // Stop propagation of keyboard events
+        e.stopPropagation();
       }}
     >
       {/* Drag Bar */}
@@ -146,6 +156,7 @@ const styles = {
     minHeight: 160,
     zIndex: 100,
     transition: 'all 0.2s',
+    pointerEvents: 'auto',
   },
 
   dragBar: {
@@ -161,6 +172,7 @@ const styles = {
     color: '#334155',
     fontSize: 13,
     fontWeight: 600,
+    pointerEvents: 'auto',
   },
 
   badge: {
@@ -169,12 +181,14 @@ const styles = {
     background: '#e2e8f0',
     padding: '2px 8px',
     borderRadius: 999,
+    pointerEvents: 'auto',
   },
 
   editorWrap: {
     background: '#fff',
     height: 'calc(100% - 38px)',
     overflow: 'auto',
+    pointerEvents: 'auto',
   },
 
   resizeHandle: {
@@ -186,6 +200,7 @@ const styles = {
     background: '#4da6ff',
     borderRadius: 4,
     cursor: 'nwse-resize',
+    pointerEvents: 'auto',
   },
 };
 
