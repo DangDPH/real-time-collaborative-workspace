@@ -48,6 +48,12 @@ const SHAPE_CATEGORIES = [
     ]
   },
   {
+    categoryName: 'Text',
+    shapes: [
+      { id: 'text_box', icon: 'A', type: 'TEXT' }
+    ]
+  },
+  {
     categoryName: 'Equation Shapes',
     shapes: [
       { id: 'plus', icon: '+', type: 'SVG_PATH', data: 'M 35 0 L 65 0 L 65 35 L 100 35 L 100 65 L 65 65 L 65 100 L 35 100 L 35 65 L 0 65 L 0 35 L 35 35 Z' },
@@ -120,10 +126,11 @@ const ShapeSelector = ({ onSelectShape }) => {
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
                     onClick={() => {
                       // Passing the type and data (for SVG_PATH) back to Whiteboard
+                      // For TEXT type, data is undefined which is fine
                       onSelectShape(shape.type, shape.data); 
                       setIsOpen(false); 
                     }}
-                    title={shape.type}
+                    title={shape.id}
                   >
                     {shape.icon}
                   </button>
