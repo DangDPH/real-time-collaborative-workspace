@@ -113,3 +113,148 @@ body {
   transform: scale(1.15);
   transition: 0.2s;
 }
+/* 🌟 Voice Box */
+/* ---------------- Voice Toggle Button ---------------- */
+.voice-toggle {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  background: #229ed9;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ---------------- Voice Box ---------------- */
+.voice-box {
+  position: fixed;
+  width: 280px;
+  height: 350px;
+  background: #f1f2f6;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.voice-header {
+  background: #74c0fc;
+  padding: 10px;
+  font-weight: bold;
+  color: #2d3436;
+  display: flex;
+  justify-content: space-between;
+  cursor: grab;
+}
+
+.voice-header button {
+  background: transparent;
+  border: none;
+  color: #2d3436;
+  cursor: pointer;
+}
+
+.voice-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.join-btn {
+  padding: 10px 16px;
+  border-radius: 20px;
+  background: #4a9ad7;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+.join-btn:hover { background: #4b8ad8; }
+
+/* ---------------- User List ---------------- */
+.voice-users {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.voice-user {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.user-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px; /* khoảng cách tên với icon mic */
+}
+
+.user-mic {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.user-mic svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Mic on/off */
+.voice-user .mic-on {
+  color: #43b581; /* xanh lá khi đang nói */
+}
+
+.voice-user .mic-off {
+  color: gray; /* mic tắt */
+}
+
+/* ---------------- Voice Footer ---------------- */
+.voice-footer {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+  border-top: 1px solid #dfe6e9;
+  background: #f0f0f0;
+}
+
+.mic-btn, .audio-btn {
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leave-btn {
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.leave-btn:hover { background: #ff4c4c; }
