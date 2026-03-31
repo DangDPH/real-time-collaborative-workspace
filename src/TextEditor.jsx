@@ -2,31 +2,62 @@ import { useEffect, useState } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
-function TextEditor() {
-  const [boxes, setBoxes] = useState([
-    {
-      id: 1,
-      x: 220,
-      y: 140,
-      width: 420,
-      height: 220,
-      content: "<h2>Title</h2><p>Double click on canvas to add more text boxes.</p>",
-    },
-  ]);
+const DEFAULT_BOXES = [
+  {
+    id: 1,
+    x: 220,
+    y: 140,
+    width: 420,
+    height: 220,
+    content:
+      "<h2>Title</h2><p>Double click on canvas to add more text boxes.</p>",
+  },
+];
 
-  const [selectedId, setSelectedId] = useState(1);
+function TextEditor({ addBoxSignal }) {
+  const [boxes, setBoxes] = useState(() => {
+    const saved = localStorage.getItem("canvas-text-boxes");
+    return saved ? JSON.parse(saved) : DEFAULT_BOXES;
+  });
+
+  const [selectedId, setSelectedId] = useState(boxes[0]?.id ?? null);
   const [draggingId, setDraggingId] = useState(null);
   const [resizingId, setResizingId] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    localStorage.setItem("canvas-text-boxes", JSON.stringify(boxes));
+  }, [boxes]);
+
+  useEffect(() => {
+    if (!addBoxSignal) return;
+
+    const newBox = {
+      id: Date.now(),
+      x: 180,
+      y: 120,
+      width: 420,
+      height: 220,
+      content: "<p>New text box</p>",
+    };
+
+    setBoxes((prev) => [...prev, newBox]);
+    setSelectedId(newBox.id);
+  }, [addBoxSignal]);
 
   const modules = {
     toolbar: [
       [{ header: [1, 2, 3, false] }],
       ["bold", "italic", "underline"],
-      [{ list: "ordered" }, { list: "bullet" }],
+      [{ list: "ordered" }, { list: "bullet" }, { list: "check" }],
       ["link"],
       ["clean"],
     ],
+    history: {
+      delay: 500,
+      maxStack: 100,
+      userOnly: true,
+    },
   };
 
   const formats = [
@@ -39,13 +70,11 @@ function TextEditor() {
     "link",
   ];
 
-  const handleCanvasDoubleClick = (e) => {
-    if (e.target.closest(".text-box")) return;
-
+  const createBoxAt = (x, y) => {
     const newBox = {
       id: Date.now(),
-      x: e.clientX - 180,
-      y: e.clientY - 60,
+      x,
+      y,
       width: 420,
       height: 220,
       content: "<p>New text box</p>",
@@ -53,6 +82,13 @@ function TextEditor() {
 
     setBoxes((prev) => [...prev, newBox]);
     setSelectedId(newBox.id);
+  };
+
+  const handleCanvasDoubleClick = (e) => {
+    if (e.target.closest(".text-box")) return;
+
+    const canvasRect = e.currentTarget.getBoundingClientRect();
+    createBoxAt(e.clientX - canvasRect.left - 180, e.clientY - canvasRect.top - 60);
   };
 
   const handleDragStart = (e, box) => {
@@ -144,7 +180,8 @@ function TextEditor() {
       onClick={() => setSelectedId(null)}
     >
       <div style={styles.hint}>
-        Double click to create a text box • Click to select • Drag top bar • Resize bottom-right • Delete to remove
+        Double click to create a text box • Click to select • Drag top bar •
+        Resize bottom-right • Delete to remove
       </div>
 
       {boxes.map((box) => (
@@ -175,7 +212,19 @@ function TextEditor() {
             onMouseDown={(e) => handleDragStart(e, box)}
           >
             <span>Text Box</span>
-            <span style={styles.badge}>Drag</span>
+            <div style={styles.badges}>
+              <span style={styles.badge}>Drag</span>
+              <span
+                style={styles.deleteBadge}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setBoxes((prev) => prev.filter((b) => b.id !== box.id));
+                  if (selectedId === box.id) setSelectedId(null);
+                }}
+              >
+                Delete
+              </span>
+            </div>
           </div>
 
           <div style={styles.editorWrap}>
@@ -202,8 +251,8 @@ function TextEditor() {
 
 const styles = {
   canvas: {
-    width: "100vw",
-    height: "100vh",
+    width: "100%",
+    height: "100%",
     position: "relative",
     overflow: "auto",
     background: "#eef2f7",
@@ -213,10 +262,10 @@ const styles = {
   },
 
   hint: {
-    position: "fixed",
+    position: "sticky",
     top: 18,
-    left: "50%",
-    transform: "translateX(-50%)",
+    margin: "18px auto 0",
+    width: "fit-content",
     zIndex: 20,
     background: "rgba(255,255,255,0.92)",
     border: "1px solid #dde3ec",
@@ -252,12 +301,26 @@ const styles = {
     fontWeight: 600,
   },
 
+  badges: {
+    display: "flex",
+    gap: 6,
+  },
+
   badge: {
     fontSize: 12,
     color: "#64748b",
     background: "#e2e8f0",
     padding: "2px 8px",
     borderRadius: 999,
+  },
+
+  deleteBadge: {
+    fontSize: 12,
+    color: "#b91c1c",
+    background: "#fee2e2",
+    padding: "2px 8px",
+    borderRadius: 999,
+    cursor: "pointer",
   },
 
   editorWrap: {
