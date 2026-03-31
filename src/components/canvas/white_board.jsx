@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Stage, Layer } from 'react-konva';
+import { Stage, Layer, Rect } from 'react-konva';
 import { v4 as uuidv4 } from 'uuid';
 import ShapeRenderer from './shape_renderer';
 import ShapeSelector from './shapes/Shape_Selector';
@@ -115,7 +115,11 @@ const Whiteboard = () => {
   };
 
   const handleMouseDown = (e) => {
-    const clickedOnEmpty = e.target === e.target.getStage();
+
+    // Check if user clicked on empty area (not on any shape)
+    const isOverlay = e.target.id() === 'drawing-overlay';
+    const clickedOnEmpty = e.target === e.target.getStage() || isOverlay;
+
     if (clickedOnEmpty) setSelectedId(null);
     if (mode === 'select') return;
 
@@ -128,7 +132,11 @@ const Whiteboard = () => {
       tool: mode, 
       points: [pos.x, pos.y], 
       stroke: mode === 'eraser' ? '#ffffff' : brushColor, 
-      strokeWidth: brushSize 
+      strokeWidth: brushSize,
+      tension: 0.5,
+      lineCap: 'round',
+      lineJoin: 'round',
+      globalCompositeOperation: mode === 'eraser' ? 'destination-out' : 'source-over'
     };
     setShapes([...shapes, newLine]);
   };
@@ -165,7 +173,7 @@ const Whiteboard = () => {
   // --- UI STYLES ---
   const appContainerStyle = { display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' };
   const sidebarStyle = { width: `${sidebarWidth}px`, backgroundColor: '#ffffff', borderRight: '1px solid #e5e7eb', boxShadow: '2px 0 10px rgba(0,0,0,0.05)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 10, overflowY: 'auto' };
-  const canvasContainerStyle = { flex: 1, backgroundColor: '#f3f4f6', position: 'relative' };
+  const canvasContainerStyle = { flex: 1, backgroundColor: '#ffffff', position: 'relative' };
   const buttonStyle = { padding: '10px 15px', cursor: 'pointer', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#f9fafb', textAlign: 'left', fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background-color 0.2s' };
 
   return (
@@ -344,6 +352,18 @@ const Whiteboard = () => {
                 }}
               />
             ))}
+
+            {mode !== 'select' && (
+              <Rect
+                id="drawing-overlay"
+                x={0}
+                y={0}
+                width={stageSize.width}
+                height={stageSize.height}
+                fill="transparent"
+              />
+            )}
+
           </Layer>
         </Stage>
       </div>
