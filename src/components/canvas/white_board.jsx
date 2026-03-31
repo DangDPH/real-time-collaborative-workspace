@@ -84,7 +84,8 @@ const Whiteboard = () => {
       };
       setTextBoxes([...textBoxes, newTextBox]);
       setSelectedTextBoxId(newTextBox.id);
-      // Keep selectedId as is - don't clear it to prevent toolbar from hiding
+      setSelectedId(null); // Clear shape selection to focus on textbox
+      console.log('Created textbox:', newTextBox.id, 'selectedTextBoxId should be:', newTextBox.id);
       return;
     }
 
