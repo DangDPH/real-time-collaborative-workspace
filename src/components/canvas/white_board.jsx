@@ -84,7 +84,7 @@ const Whiteboard = () => {
       };
       setTextBoxes([...textBoxes, newTextBox]);
       setSelectedTextBoxId(newTextBox.id);
-      setSelectedId(null);
+      // Keep selectedId as is - don't clear it to prevent toolbar from hiding
       return;
     }
 
@@ -203,7 +203,7 @@ const Whiteboard = () => {
         </div>
 
         {/* DYNAMIC SETTINGS AREA */}
-        {(mode === 'pen' || mode === 'eraser' || selectedId) && (
+        {(mode === 'pen' || mode === 'eraser' || selectedId || selectedTextBoxId) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
             
             {/* 1. Brush/Eraser Settings */}
