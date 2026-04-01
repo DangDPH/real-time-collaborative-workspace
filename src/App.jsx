@@ -1,4 +1,5 @@
 import React from 'react';
+import './styles.css';
 import Whiteboard from './components/canvas/white_board';
 import ChatBox from './components/ChatBox';
 import VoiceBox from './components/VoiceBox';
@@ -9,15 +10,9 @@ function App() {
       {/* Whiteboard làm nền phía dưới */}
       <Whiteboard />
 
-      {/* Chat Box nổi phía trên góc phải dưới */}
-      <div className="absolute bottom-4 right-4" style={{ zIndex: 1000 }}>
-        <ChatBox />
-      </div>
-
-      {/* Voice Box nổi phía trên Chat Box */}
-      <div className="absolute bottom-20 right-4" style={{ zIndex: 1000 }}>
-        <VoiceBox />
-      </div>
+      {/* Chat + Voice box component tự xử lý vị trí và nút toggle */}
+      <ChatBox />
+      <VoiceBox />
     </div>
   );
 }

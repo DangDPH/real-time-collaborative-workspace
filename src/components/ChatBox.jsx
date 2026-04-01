@@ -5,13 +5,20 @@ export default function ChatBox() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
-  const [position, setPosition] = useState({ x: 1000, y: 500 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
 
   const dragData = useRef({
     isDragging: false,
     offsetX: 0,
     offsetY: 0
   });
+
+  useEffect(() => {
+    setPosition({
+      x: window.innerWidth - 340,
+      y: window.innerHeight - 420
+    });
+  }, []);
 
   const endRef = useRef(null);
 

@@ -28,6 +28,9 @@ body {
 .chat-box, .voice-box {
   position: fixed;
   z-index: 2001;
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
   background: white;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.2);
@@ -119,7 +122,7 @@ body {
 /* 🌟 Voice Box */
 /* ---------------- Voice Toggle Button ---------------- */
 .voice-toggle {
-  background: #3b82f6;
+  background: #229ed9;
   bottom: 85px; /* Nằm phía trên Chat Box một chút */
   right: 20px;
 }

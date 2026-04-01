@@ -13,8 +13,15 @@ export default function VoiceBox() {
   const [micOn, setMicOn] = useState(true);
   const [audioOn, setAudioOn] = useState(true);
 
-  const [position, setPosition] = useState({ x: 900, y: 500 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const dragData = useRef({ isDragging: false, offsetX: 0, offsetY: 0 });
+
+  useEffect(() => {
+    setPosition({
+      x: window.innerWidth - 340,
+      y: window.innerHeight - 520
+    });
+  }, []);
 
   const handleMouseDown = (e) => {
     dragData.current.isDragging = true;
