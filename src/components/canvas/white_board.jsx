@@ -152,12 +152,16 @@ const Whiteboard = () => {
   // FIXED: Optimized function to add new shapes without "not implemented" error
   const handleSelectShape = (type, svgData = null) => {
     let newShape = null;
+    
+    // Calculate center of visible canvas (accounts for pan offset)
+    const centerX = -stagePosition.x + stageSize.width / 2;
+    const centerY = -stagePosition.y + stageSize.height / 2;
 
     if (type === 'TEXT') {
       newShape = {
         id: uuidv4(),
         type: 'TEXT',
-        x: 100, y: 100,
+        x: centerX, y: centerY,
         text: 'Double click to edit', 
         fontSize: 16, fontFamily: 'Arial', align: 'left', 
         fontStyle: 'normal', textDecoration: '', fill: '#000000',
@@ -167,7 +171,7 @@ const Whiteboard = () => {
       newShape = { 
         id: uuidv4(), 
         type: 'SVG_PATH', 
-        x: 100, y: 100, 
+        x: centerX, y: centerY, 
         data: svgData, 
         fill: 'none', stroke: '#000000', strokeWidth: 2,
         scaleX: 1, scaleY: 1, rotation: 0 
@@ -535,8 +539,43 @@ const Whiteboard = () => {
 
         <div style={{ flex: 1 }}></div>
 
+        {/* Undo/Redo buttons - top priority */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          <button 
+            style={{ 
+              ...buttonStyle, flex: 1, justifyContent: 'center', 
+              opacity: historyStep === 0 ? 0.5 : 1, 
+              cursor: historyStep === 0 ? 'not-allowed' : 'pointer',
+              borderRadius: '12px',
+              backgroundColor: '#fef3c7',
+              borderColor: '#fbbf24'
+            }} 
+            onClick={handleUndo}
+            disabled={historyStep === 0}
+            title="Undo (Hoàn tác)"
+          >
+            ↩️ Undo
+          </button>
           
+          <button 
+            style={{ 
+              ...buttonStyle, flex: 1, justifyContent: 'center', 
+              opacity: historyStep === history.length - 1 ? 0.5 : 1, 
+              cursor: historyStep === history.length - 1 ? 'not-allowed' : 'pointer',
+              borderRadius: '12px',
+              backgroundColor: '#fef3c7',
+              borderColor: '#fbbf24'
+            }} 
+            onClick={handleRedo}
+            disabled={historyStep === history.length - 1}
+            title="Redo (Làm lại)"
+          >
+            ↪️ Redo
+          </button>
+        </div>
+
+        {/* Reset View and Grid buttons */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           <button 
             style={{ 
               ...buttonStyle, 
@@ -564,34 +603,6 @@ const Whiteboard = () => {
             onClick={() => setGridIndex((prev) => (prev + 1) % GRID_OPTIONS.length)}
           >
             {showGrid ? `📏 Grid: ${currentGridSize}px` : '📏 Grid: OFF'}
-          </button>
-
-          <button 
-            style={{ 
-              ...buttonStyle, flex: 1, justifyContent: 'center', 
-              opacity: historyStep === 0 ? 0.5 : 1, 
-              cursor: historyStep === 0 ? 'not-allowed' : 'pointer',
-              borderRadius: '12px' 
-            }} 
-            onClick={handleUndo}
-            disabled={historyStep === 0}
-            title="Undo (Hoàn tác)"
-          >
-            ↩️ Undo
-          </button>
-          
-          <button 
-            style={{ 
-              ...buttonStyle, flex: 1, justifyContent: 'center', 
-              opacity: historyStep === history.length - 1 ? 0.5 : 1, 
-              cursor: historyStep === history.length - 1 ? 'not-allowed' : 'pointer' ,
-              borderRadius: '12px'
-            }} 
-            onClick={handleRedo}
-            disabled={historyStep === history.length - 1}
-            title="Redo (Làm lại)"
-          >
-            ↪️ Redo
           </button>
         </div>
 
