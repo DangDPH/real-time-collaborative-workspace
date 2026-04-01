@@ -595,10 +595,10 @@ const Whiteboard = () => {
             style={{ 
               ...buttonStyle, 
               borderRadius: '12px', 
-              backgroundColor: showGrid ? '#eff6ff' : '#f9fafb',
-              borderColor: showGrid ? '#3b82f6' : '#d1d5db',
+              backgroundColor: '#e0e7ff',
+              borderColor: '#6366f1',
               justifyContent: 'center',
-              width: '100%'
+              flex: 1
             }} 
             onClick={() => setGridIndex((prev) => (prev + 1) % GRID_OPTIONS.length)}
           >
