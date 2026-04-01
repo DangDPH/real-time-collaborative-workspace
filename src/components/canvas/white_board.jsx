@@ -99,6 +99,11 @@ const Whiteboard = () => {
   const outlineThickness = 2; // mặc định và cố định, slider đã ẩn
 
   const isDrawing = useRef(false);
+  
+  // Map pan state
+  const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
+  const isPanning = useRef(false);
+  const lastPointerPos = useRef({ x: 0, y: 0 });
 
   // Hàm lưu trạng thái mới vào lịch sử
   const commitToHistory = (newShapes) => {
@@ -174,15 +179,26 @@ const Whiteboard = () => {
   };
 
   const handleMouseDown = (e) => {
+    const stage = e.target.getStage();
+    const pointerPos = stage.getPointerPosition();
+    
     // Check if user clicked on empty area (not on any shape)
     const isOverlay = e.target.id() === 'drawing-overlay';
-    const clickedOnEmpty = e.target === e.target.getStage() || isOverlay;
+    const clickedOnEmpty = e.target === stage || isOverlay;
 
     if (clickedOnEmpty) setSelectedId(null);
+    
+    // In select mode, allow panning by dragging on empty space
+    if (mode === 'select' && clickedOnEmpty) {
+      isPanning.current = true;
+      lastPointerPos.current = pointerPos;
+      return;
+    }
+
     if (mode === 'select') return;
 
     isDrawing.current = true;
-    const pos = e.target.getStage().getPointerPosition();
+    const pos = stage.getPointerPosition();
 
     const newLine = { 
       id: uuidv4(), 
@@ -200,6 +216,23 @@ const Whiteboard = () => {
   };
 
   const handleMouseMove = (e) => {
+    // Handle panning in select mode
+    if (isPanning.current && mode === 'select') {
+      const stage = e.target.getStage();
+      const pointerPos = stage.getPointerPosition();
+      
+      const deltaX = pointerPos.x - lastPointerPos.current.x;
+      const deltaY = pointerPos.y - lastPointerPos.current.y;
+      
+      setStagePosition(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }));
+      
+      lastPointerPos.current = pointerPos;
+      return;
+    }
+    
     if (mode === 'select' || !isDrawing.current) return;
     const stage = e.target.getStage();
     const point = stage.getPointerPosition();
@@ -212,6 +245,10 @@ const Whiteboard = () => {
   };
 
   const handleMouseUp = () => {
+    if (isPanning.current) {
+      isPanning.current = false;
+      return;
+    }
     if (isDrawing.current) {
       isDrawing.current = false;
       commitToHistory(shapes); // Lưu lại nét vẽ vào lịch sử khi nhả chuột
@@ -486,6 +523,21 @@ const Whiteboard = () => {
             style={{ 
               ...buttonStyle, 
               borderRadius: '12px', 
+              backgroundColor: '#e0e7ff',
+              borderColor: '#6366f1',
+              justifyContent: 'center',
+              flex: 1
+            }} 
+            onClick={() => setStagePosition({ x: 0, y: 0 })}
+            title="Reset map view"
+          >
+            🎯 Reset View
+          </button>
+
+          <button 
+            style={{ 
+              ...buttonStyle, 
+              borderRadius: '12px', 
               backgroundColor: showGrid ? '#eff6ff' : '#f9fafb',
               borderColor: showGrid ? '#3b82f6' : '#d1d5db',
               justifyContent: 'center',
@@ -557,8 +609,10 @@ const Whiteboard = () => {
 
       <div style={canvasContainerStyle}>
         <Stage
+          x={stagePosition.x}
+          y={stagePosition.y}
           width={stageSize.width} height={stageSize.height}
-          style={{ cursor: mode === 'pen' ? 'crosshair' : (mode === 'eraser' ? 'cell' : 'default'), pointerEvents: 'auto' }}
+          style={{ cursor: mode === 'pen' ? 'crosshair' : (mode === 'eraser' ? 'cell' : (mode === 'select' ? 'grab' : 'default')), pointerEvents: 'auto' }}
           onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
           onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp}
         >
