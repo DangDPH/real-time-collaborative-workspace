@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import TextEditor from "./TextEditor";
+import "./styles.css";
+import Whiteboard from "./components/canvas/white_board";
 import DocumentEditor from "./DocumentEditor";
+import ChatBox from "./components/ChatBox";
+import VoiceBox from "./components/VoiceBox";
 
 function App() {
   const [mode, setMode] = useState(
@@ -11,7 +14,6 @@ function App() {
     return saved ? Number(saved) : window.innerWidth * 0.72;
   });
   const [isDragging, setIsDragging] = useState(false);
-  const [addBoxSignal, setAddBoxSignal] = useState(0);
 
   useEffect(() => {
     localStorage.setItem("workspace-mode", mode);
@@ -50,13 +52,6 @@ function App() {
         <div style={styles.logo}>Realtime Collaborative Workspace</div>
 
         <div style={styles.actions}>
-          <button
-            style={styles.primaryButton}
-            onClick={() => setAddBoxSignal((v) => v + 1)}
-          >
-            + Add Text Box
-          </button>
-
           <div style={styles.modeGroup}>
             <button
               style={mode === "canvas" ? styles.activeButton : styles.button}
@@ -85,7 +80,7 @@ function App() {
       <div style={styles.content}>
         {mode === "canvas" && (
           <div style={styles.fullPane}>
-            <TextEditor addBoxSignal={addBoxSignal} />
+            <Whiteboard />
           </div>
         )}
 
@@ -98,7 +93,7 @@ function App() {
         {mode === "split" && (
           <div style={styles.layout}>
             <div style={{ ...styles.leftPane, width: leftWidth }}>
-              <TextEditor addBoxSignal={addBoxSignal} />
+              <Whiteboard />
             </div>
 
             <div
@@ -113,6 +108,10 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Chat + Voice box floating overlay */}
+      <ChatBox />
+      <VoiceBox />
     </div>
   );
 }
