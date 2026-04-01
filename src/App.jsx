@@ -4,6 +4,7 @@ import Whiteboard from "./components/canvas/white_board";
 import DocumentEditor from "./DocumentEditor";
 import ChatBox from "./components/ChatBox";
 import VoiceBox from "./components/VoiceBox";
+import ErrorBoundary from "./ErrorBoundary";
 
 function App() {
   const [mode, setMode] = useState(
@@ -80,20 +81,26 @@ function App() {
       <div style={styles.content}>
         {mode === "canvas" && (
           <div style={styles.fullPane}>
-            <Whiteboard />
+            <ErrorBoundary>
+              <Whiteboard />
+            </ErrorBoundary>
           </div>
         )}
 
         {mode === "document" && (
           <div style={styles.fullPane}>
-            <DocumentEditor />
+            <ErrorBoundary>
+              <DocumentEditor />
+            </ErrorBoundary>
           </div>
         )}
 
         {mode === "split" && (
           <div style={styles.layout}>
             <div style={{ ...styles.leftPane, width: leftWidth }}>
-              <Whiteboard />
+              <ErrorBoundary>
+                <Whiteboard />
+              </ErrorBoundary>
             </div>
 
             <div
@@ -103,7 +110,9 @@ function App() {
             />
 
             <div style={styles.rightPane}>
-              <DocumentEditor />
+              <ErrorBoundary>
+                <DocumentEditor />
+              </ErrorBoundary>
             </div>
           </div>
         )}

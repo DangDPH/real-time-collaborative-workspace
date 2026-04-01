@@ -7,7 +7,13 @@ import ShapeSelector from './shapes/Shape_Selector';
 import io from 'socket.io-client';
 import axios from 'axios';
 
-const socket = io('http://localhost:5000'); // CONNECT TO BACKEND SERVER IN HẺRE
+let socket = null;
+try {
+  socket = io('http://localhost:5000', { reconnectionDelay: 1000, reconnection: true });
+} catch (err) {
+  console.warn('Socket.io init error (backend may not be running):', err);
+  socket = null;
+}
 
 const Whiteboard = () => {
   const [showToolbar, setShowToolbar] = useState(true); // Toggle toolbar visibility
@@ -26,6 +32,8 @@ const Whiteboard = () => {
   }, []);
 
   useEffect(() => {
+    if (!socket) return; // Skip if socket not initialized
+    
     // Fetch initial shapes from the server when the component mounts
     socket.on('receive-shape', (incomingShape) => {
       setShapes((prev) => {
@@ -130,7 +138,7 @@ const Whiteboard = () => {
     const updatedShapes = [...shapes, newShape];
     setShapes(updatedShapes);
     commitToHistory(updatedShapes); // Lưu vào lịch sử để Undo được
-    socket.emit('send-shape', newShape);
+    if (socket) socket.emit('send-shape', newShape);
     
     setMode('select'); 
     setSelectedId(newShape.id);
@@ -199,7 +207,7 @@ const Whiteboard = () => {
       commitToHistory(newShapes);
 
       // Emit the updated shape to the server
-      socket.emit('send-shape', updatedShape);
+      if (socket) socket.emit('send-shape', updatedShape);
     }
   };
 
@@ -578,7 +586,7 @@ const Whiteboard = () => {
                   setShapes(newShapes);
                   commitToHistory(newShapes);
 
-                  socket.emit('send-shape', snappedAttrs); // Send updated shape to server
+                  if (socket) socket.emit('send-shape', snappedAttrs); // Send updated shape to server
                 }}
               />
             ))}
