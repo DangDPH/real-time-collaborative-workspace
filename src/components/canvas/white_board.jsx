@@ -9,9 +9,27 @@ import axios from 'axios';
 
 let socket = null;
 try {
-  socket = io('http://localhost:5000', { reconnectionDelay: 1000, reconnection: true });
+  socket = io('http://localhost:5000', { 
+    reconnectionDelay: 1000, 
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelayMax: 5000,
+    transports: ['websocket', 'polling']
+  });
+  
+  socket.on('connect', () => {
+    console.log('✅ Socket.io connected to backend:', socket.id);
+  });
+  
+  socket.on('connect_error', (error) => {
+    console.warn('⚠️ Socket.io connection error (backend may not be running):', error.message);
+  });
+  
+  socket.on('disconnect', (reason) => {
+    console.warn('⚠️ Socket.io disconnected:', reason);
+  });
 } catch (err) {
-  console.warn('Socket.io init error (backend may not be running):', err);
+  console.warn('⚠️ Socket.io init error (backend unavailable):', err.message);
   socket = null;
 }
 
@@ -621,19 +639,24 @@ const Whiteboard = () => {
             <Layer listening={false}>
               {(() => {
                 const lines = [];
-                // grid color with very light opacity to avoid being too distracting
-                const gridColor = 'rgba(0, 0, 0, 0.16)'; 
-
-                // Vẽ nét dọc
-                for (let i = 0; i < stageSize.width / currentGridSize; i++) {
+                const gridColor = 'rgba(0, 0, 0, 0.16)';
+                
+                // Calculate visible grid bounds accounting for pan offset
+                const startX = Math.floor(-stagePosition.x / currentGridSize) * currentGridSize;
+                const endX = startX + stageSize.width + currentGridSize;
+                const startY = Math.floor(-stagePosition.y / currentGridSize) * currentGridSize;
+                const endY = startY + stageSize.height + currentGridSize;
+                
+                // Vẽ nét dọc (vertical lines)
+                for (let i = startX; i < endX; i += currentGridSize) {
                   lines.push(
-                    <Rect key={`v-${i}`} x={i * currentGridSize} y={0} width={1} height={stageSize.height} fill={gridColor} />
+                    <Rect key={`v-${i}`} x={i} y={startY} width={1} height={endY - startY} fill={gridColor} />
                   );
                 }
-                // Vẽ nét ngang
-                for (let j = 0; j < stageSize.height / currentGridSize; j++) {
+                // Vẽ nét ngang (horizontal lines)
+                for (let j = startY; j < endY; j += currentGridSize) {
                   lines.push(
-                    <Rect key={`h-${j}`} x={0} y={j * currentGridSize} width={stageSize.width} height={1} fill={gridColor} />
+                    <Rect key={`h-${j}`} x={startX} y={j} width={endX - startX} height={1} fill={gridColor} />
                   );
                 }
                 return lines;
