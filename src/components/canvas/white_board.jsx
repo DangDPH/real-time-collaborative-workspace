@@ -18,18 +18,39 @@ try {
 const Whiteboard = () => {
   const [showToolbar, setShowToolbar] = useState(true); // Toggle toolbar visibility
   const sidebarWidth = showToolbar ? 250 : 0; 
+  const containerRef = useRef(null);
   
   const [stageSize, setStageSize] = useState({
-    width: window.innerWidth - sidebarWidth,
-    height: window.innerHeight,
+    width: 800,
+    height: 600,
   });
 
-  // Handle window resizing to keep the canvas responsive
+  // Handle measuring parent container size
   useEffect(() => {
-    const handleResize = () => setStageSize({ width: window.innerWidth - sidebarWidth, height: window.innerHeight });
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateSize = () => {
+      const rect = container.getBoundingClientRect();
+      setStageSize({
+        width: Math.max(rect.width - sidebarWidth, 100),
+        height: Math.max(rect.height, 100),
+      });
+    };
+
+    // Initial size
+    updateSize();
+
+    // Watch for resize
+    const resizeObserver = new ResizeObserver(updateSize);
+    resizeObserver.observe(container);
+
+    window.addEventListener('resize', updateSize);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, [sidebarWidth]);
 
   useEffect(() => {
     if (!socket) return; // Skip if socket not initialized
@@ -214,13 +235,13 @@ const Whiteboard = () => {
   const selectedShape = shapes.find(s => s.id === selectedId);
 
   // --- UI STYLES ---
-  const appContainerStyle = { display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' };
+  const appContainerStyle = { display: 'flex', width: '100%', height: '100%', overflow: 'hidden' };
   const sidebarStyle = { width: `${sidebarWidth}px`, backgroundColor: '#ffffff', borderRight: '1px solid #e5e7eb', boxShadow: '2px 0 10px rgba(0,0,0,0.05)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 10, overflowY: 'auto' };
   const canvasContainerStyle = { flex: 1, backgroundColor: '#ffffff', position: 'relative' };
   const buttonStyle = { padding: '10px 15px', cursor: 'pointer', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#f9fafb', textAlign: 'left', fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background-color 0.2s' };
 
   return (
-    <div style={appContainerStyle}>
+    <div ref={containerRef} style={appContainerStyle}>
       {showToolbar && (
         <div style={sidebarStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '15px', borderBottom: '2px dashed #e5e7eb' }}>
