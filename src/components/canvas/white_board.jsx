@@ -10,7 +10,8 @@ import axios from 'axios';
 const socket = io('http://localhost:5000'); // CONNECT TO BACKEND SERVER IN HẺRE
 
 const Whiteboard = () => {
-  const sidebarWidth = 250; 
+  const [showToolbar, setShowToolbar] = useState(true); // Toggle toolbar visibility
+  const sidebarWidth = showToolbar ? 250 : 0; 
   
   const [stageSize, setStageSize] = useState({
     width: window.innerWidth - sidebarWidth,
@@ -212,11 +213,18 @@ const Whiteboard = () => {
 
   return (
     <div style={appContainerStyle}>
-      <div style={sidebarStyle}>
-        
-        <div style={{ marginBottom: '10px', paddingBottom: '15px', borderBottom: '2px dashed #e5e7eb' }}>
-          <h2 style={{ margin: 0, fontSize: '20px',fontFamily: 'Poppins, sans-serif', color: '#111827' }}>🎨 My Canvas</h2>
-        </div>
+      {showToolbar && (
+        <div style={sidebarStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '15px', borderBottom: '2px dashed #e5e7eb' }}>
+            <h2 style={{ margin: 0, fontSize: '20px', fontFamily: 'Poppins, sans-serif', color: '#111827' }}>🎨 My Canvas</h2>
+            <button 
+              onClick={() => setShowToolbar(false)}
+              title="Hide toolbar"
+              style={{ padding: '4px 8px', cursor: 'pointer', border: '1px solid #d1d5db', borderRadius: '4px', backgroundColor: '#f3f4f6', fontSize: '14px', fontWeight: 'bold', lineHeight: '1' }}
+            >
+              &lt;&gt;
+            </button>
+          </div>
 
         {/* TOOL SELECTION */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -493,6 +501,30 @@ const Whiteboard = () => {
         </button>
 
       </div>
+      )}
+      
+      {!showToolbar && (
+        <button 
+          onClick={() => setShowToolbar(true)}
+          title="Show toolbar"
+          style={{ 
+            position: 'fixed', 
+            left: '10px', 
+            top: '60px', 
+            padding: '8px 12px', 
+            cursor: 'pointer', 
+            border: '1px solid #d1d5db', 
+            borderRadius: '6px', 
+            backgroundColor: '#fff', 
+            fontSize: '16px', 
+            fontWeight: 'bold', 
+            zIndex: 999,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}
+        >
+          &lt;&gt;
+        </button>
+      )}
 
       <div style={canvasContainerStyle}>
         <Stage
