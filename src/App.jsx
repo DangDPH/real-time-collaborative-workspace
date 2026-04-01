@@ -12,7 +12,7 @@ function App() {
   );
   const [leftWidth, setLeftWidth] = useState(() => {
     const saved = localStorage.getItem("workspace-left-width");
-    return saved ? Number(saved) : window.innerWidth * 0.72;
+    return saved ? Number(saved) : window.innerWidth * 0.5;
   });
   const [isDragging, setIsDragging] = useState(false);
 

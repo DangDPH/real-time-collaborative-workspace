@@ -230,7 +230,7 @@ const Whiteboard = () => {
               title="Hide toolbar"
               style={{ padding: '4px 8px', cursor: 'pointer', border: '1px solid #d1d5db', borderRadius: '4px', backgroundColor: '#f3f4f6', fontSize: '14px', fontWeight: 'bold', lineHeight: '1' }}
             >
-              &lt;&gt;
+              &lt;
             </button>
           </div>
 
@@ -530,7 +530,7 @@ const Whiteboard = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}
         >
-          &lt;&gt;
+          &gt;
         </button>
       )}
 
