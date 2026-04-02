@@ -25,11 +25,10 @@ const LineShape = ({ shapeProps, isSelected, onSelect, onChange, outlineThicknes
         scaleX={scaleX || 1}
         scaleY={scaleY || 1}
         rotation={rotation || 0}
-        draggable={mode === 'select'}
+        draggable={false}
         
         onMouseDown={(e) => {
-          if (mode === 'eraser') onEraseStart(e);
-          else if (mode === 'select') onSelect();
+          if (mode === 'select') onSelect();
         }}
         
         onDragEnd={(e) => {
@@ -56,17 +55,34 @@ const LineShape = ({ shapeProps, isSelected, onSelect, onChange, outlineThicknes
         }}
       >
         {/* Nét vẽ gốc */}
-        <Line
-          {...lineProps}
-          x={0} y={0} // Đưa về 0 vì Group đã quản lý vị trí x, y
-          points={shapeProps.points}
-          stroke={shapeProps.stroke}
-          strokeWidth={shapeProps.strokeWidth}
-          tension={0.5}
-          lineCap="round"
-          lineJoin="round"
-          hitStrokeWidth={Math.max(20, (shapeProps.strokeWidth || 2) + 10)}
-        />
+        {shapeProps.multiPoints ? (
+          shapeProps.multiPoints.map((pts, i) => (
+            <Line
+              key={i}
+              {...lineProps}
+              x={0} y={0}
+              points={pts}
+              stroke={shapeProps.stroke}
+              strokeWidth={shapeProps.strokeWidth}
+              tension={0.5}
+              lineCap="round"
+              lineJoin="round"
+              hitStrokeWidth={Math.max(20, (shapeProps.strokeWidth || 2) + 10)}
+            />
+          ))
+        ) : (
+          <Line
+            {...lineProps}
+            x={0} y={0}
+            points={shapeProps.points}
+            stroke={shapeProps.stroke}
+            strokeWidth={shapeProps.strokeWidth}
+            tension={0.5}
+            lineCap="round"
+            lineJoin="round"
+            hitStrokeWidth={Math.max(20, (shapeProps.strokeWidth || 2) + 10)}
+          />
+        )}
 
         {/* Các vết tẩy đục lỗ đính kèm theo nét vẽ */}
         {eraserStrokes && eraserStrokes.map((stroke, i) => (

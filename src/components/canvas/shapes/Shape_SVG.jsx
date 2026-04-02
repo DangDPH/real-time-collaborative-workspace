@@ -26,8 +26,7 @@ const Shape_SVG = ({ shapeProps, isSelected, onSelect, onChange, outlineThicknes
         draggable={mode === 'select'}
 
         onMouseDown={(e) => {
-          if (mode === 'eraser') onEraseStart(e);
-          else if (mode === 'select') onSelect();
+          if (mode === 'select') onSelect();
         }}
 
         onDragEnd={(e) => {

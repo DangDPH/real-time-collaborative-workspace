@@ -40,9 +40,9 @@ const Shape_Text = ({ shapeProps, isSelected, onSelect, onChange, outlineThickne
         draggable={!isEditing && mode === 'select'}
         
         onMouseDown={(e) => {
-          if (mode === 'eraser') onEraseStart(e);
-          else if (mode === 'select') onSelect();
+          if (mode === 'select') onSelect();
         }}
+        
         onDblClick={mode === 'select' ? handleDoubleClick : null}
         
         onDragEnd={(e) => {

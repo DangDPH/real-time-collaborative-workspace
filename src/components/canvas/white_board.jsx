@@ -202,36 +202,65 @@ const Whiteboard = () => {
 
   // Thêm ref này ở đầu component, ngay dưới isDrawing:
   const currentLineId = useRef(null);
+  const activeEraserStrokes = useRef(new Map());
   const erasingShapeId = useRef(null);
 
-  const handleEraseStart = (id, e) => {
-    erasingShapeId.current = id;
-    isDrawing.current = true;
-
+  const handleEraserMove = (e) => {
     const stage = e.target.getStage();
     const pointerPos = stage.getPointerPosition();
+    
+    // CHỐT CHẶN 1: Tránh lỗi khi chuột lướt ra ngoài viền canvas
+    if (!pointerPos) return;
 
-    // Thuật toán InverseTransformPoint: Chuyển Global chuột sang Local của Shape
-    const groupNode = e.currentTarget; 
-    const transform = groupNode.getAbsoluteTransform().copy().invert();
-    const localPos = transform.point(pointerPos);
+    // Tia laser bắn xuyên mặt bảng
+    const intersectedNodes = stage.getAllIntersections(pointerPos);
+    const hitShapeIds = new Set();
+
+    intersectedNodes.forEach(node => {
+      let parent = node;
+      while (parent && !parent.id()) parent = parent.parent; 
+      if (parent && parent.id() && parent.id() !== 'drawing-overlay') {
+        hitShapeIds.add(parent.id());
+      }
+    });
+
+    if (hitShapeIds.size === 0) return;
 
     setShapes(prev => {
-      const newShapes = [...prev];
-      const idx = newShapes.findIndex(s => s.id === id);
-      if (idx === -1) return prev;
+      let hasChanges = false;
+      const newShapes = prev.map(shape => {
+        if (hitShapeIds.has(shape.id)) {
+          hasChanges = true;
+          const groupNode = stage.findOne(`#${shape.id}`);
+          if (!groupNode) return shape;
 
-      const shape = { ...newShapes[idx] };
-      if (!shape.eraserStrokes) shape.eraserStrokes = []; // Tạo mảng lưu vết tẩy
+          const transform = groupNode.getAbsoluteTransform().copy().invert();
+          const localPos = transform.point(pointerPos);
 
-      // Lưu nhát tẩy đầu tiên
-      shape.eraserStrokes = [...shape.eraserStrokes, {
-        brushSize,
-        points: [localPos.x, localPos.y, localPos.x, localPos.y]
-      }];
+          const newShape = { ...shape };
+          newShape.eraserStrokes = newShape.eraserStrokes ? [...newShape.eraserStrokes] : [];
 
-      newShapes[idx] = shape;
-      return newShapes;
+          // CHỐT CHẶN 2: Fix lỗi crash bất đồng bộ State
+          const strokeIdx = activeEraserStrokes.current.get(shape.id);
+          
+          if (strokeIdx === undefined || !newShape.eraserStrokes[strokeIdx]) {
+            // Nếu là nhát đục lỗ mới (hoặc state cũ chưa kịp update)
+            newShape.eraserStrokes.push({
+              brushSize,
+              points: [localPos.x, localPos.y, localPos.x, localPos.y]
+            });
+            activeEraserStrokes.current.set(shape.id, newShape.eraserStrokes.length - 1);
+          } else {
+            // Kéo dài nhát đục lỗ
+            const currentStroke = { ...newShape.eraserStrokes[strokeIdx] };
+            currentStroke.points = currentStroke.points.concat([localPos.x, localPos.y]);
+            newShape.eraserStrokes[strokeIdx] = currentStroke;
+          }
+          return newShape;
+        }
+        return shape;
+      });
+      return hasChanges ? newShapes : prev;
     });
   };
 
@@ -250,7 +279,15 @@ const Whiteboard = () => {
       return;
     }
 
-    if (mode === 'select' || mode === 'eraser') return;
+    if (mode === 'select') return;
+
+    // Kích hoạt quét tẩy toàn cầu ngay từ khoảnh khắc click chuột đầu tiên
+    if (mode === 'eraser') {
+      isDrawing.current = true;
+      activeEraserStrokes.current.clear();
+      handleEraserMove(e); 
+      return;
+    }
 
     isDrawing.current = true;
     
@@ -278,68 +315,30 @@ const Whiteboard = () => {
   };
 
   const handleMouseMove = (e) => {
-    // 1. Xử lý kéo bản đồ (Panning)
     if (isPanning.current && mode === 'select') {
       const stage = e.target.getStage();
       const pointerPos = stage.getPointerPosition();
-      
       const deltaX = pointerPos.x - lastPointerPos.current.x;
       const deltaY = pointerPos.y - lastPointerPos.current.y;
       
-      setStagePosition(prev => ({
-        x: prev.x + deltaX,
-        y: prev.y + deltaY
-      }));
-      
+      setStagePosition(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
       lastPointerPos.current = pointerPos;
       return;
     }
 
     if (!isDrawing.current) return;
     
-    const stage = e.target.getStage();
-    const pointerPos = stage.getPointerPosition();
-
-    // ==========================================
-    // 2. THÊM MỚI: LOGIC ĐỤC LỖ (MASKING) CHO ERASER
-    // ==========================================
-    if (mode === 'eraser' && erasingShapeId.current) {
-      // Tìm Object (Group) đang bị tẩy dựa vào ID
-      const groupNode = stage.findOne(`#${erasingShapeId.current}`);
-      if (!groupNode) return;
-
-      // Chuyển tọa độ chuột (Global) sang hệ tọa độ bên trong Group đó (Local)
-      const transform = groupNode.getAbsoluteTransform().copy().invert();
-      const localPos = transform.point(pointerPos);
-
-      setShapes((prev) => {
-        const idx = prev.findIndex(s => s.id === erasingShapeId.current);
-        if (idx === -1) return prev;
-
-        const newShapes = [...prev];
-        const shape = { ...newShapes[idx] };
-        
-        if (!shape.eraserStrokes || shape.eraserStrokes.length === 0) return prev;
-
-        // Clone mảng nét tẩy và lấy nét cuối cùng ra cập nhật
-        const strokes = [...shape.eraserStrokes];
-        const currentStroke = { ...strokes[strokes.length - 1] };
-        
-        currentStroke.points = currentStroke.points.concat([localPos.x, localPos.y]);
-        strokes[strokes.length - 1] = currentStroke;
-        
-        shape.eraserStrokes = strokes;
-        newShapes[idx] = shape;
-        return newShapes;
-      });
-      return; // Cực kỳ quan trọng: Dừng ở đây, không chạy xuống logic bút vẽ!
+    // Nếu đang cầm tẩy, gọi hàm quét tia laser toàn bảng
+    if (mode === 'eraser') {
+      handleEraserMove(e);
+      return;
     }
 
-    // ==========================================
-    // 3. LOGIC BÚT VẼ BÌNH THƯỜNG (PEN)
-    // ==========================================
-    if (mode === 'select' || mode === 'eraser' || !currentLineId.current) return;
+    // Logic vẽ bút (Pen) bình thường
+    if (mode === 'select' || !currentLineId.current) return;
     
+    const stage = e.target.getStage();
+    const pointerPos = stage.getPointerPosition();
     const x = pointerPos.x - stage.x();
     const y = pointerPos.y - stage.y();
 
@@ -349,28 +348,85 @@ const Whiteboard = () => {
 
       const updatedShapes = [...prevShapes];
       const updatedLine = { ...updatedShapes[index] }; 
-      
       updatedLine.points = updatedLine.points.concat([x, y]);
       updatedShapes[index] = updatedLine;
-      
       return updatedShapes;
     });
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
     if (isPanning.current) {
       isPanning.current = false;
       return;
     }
+    
     if (isDrawing.current) {
       isDrawing.current = false;
-      currentLineId.current = null; // Reset ID
-      erasingShapeId.current = null;
-      
-      // Lấy state mới nhất một cách an toàn để lưu vào history (tránh bị lưu thiếu nét cuối)
-      setShapes(currentShapes => {
-        setTimeout(() => commitToHistory(currentShapes), 0);
-        return currentShapes;
+
+      setShapes(prev => {
+        let updatedShapes = [...prev];
+
+        // LOGIC TỰ ĐỘNG GỘP NÉT VẼ ĐÈ LÊN NHAU
+        if (mode === 'pen' && currentLineId.current) {
+           const stage = e.target.getStage();
+           const newShapeIdx = updatedShapes.findIndex(s => s.id === currentLineId.current);
+           const newNode = stage.findOne(`#${currentLineId.current}`);
+
+           if (newShapeIdx !== -1 && newNode) {
+              const newShape = updatedShapes[newShapeIdx];
+              const newBox = newNode.getClientRect(); // Lấy khung va chạm thực tế
+              let targetIdx = -1;
+
+              // Quét tìm xem có hình LINE cũ nào bị đè lên không
+              for (let i = 0; i < updatedShapes.length; i++) {
+                 if (i !== newShapeIdx && updatedShapes[i].type === 'LINE') {
+                    const otherNode = stage.findOne(`#${updatedShapes[i].id}`);
+                    if (otherNode) {
+                       const otherBox = otherNode.getClientRect();
+                       // Thuật toán kiểm tra Bounding Box Overlap
+                       const isIntersecting = !(
+                          newBox.x > otherBox.x + otherBox.width ||
+                          newBox.x + newBox.width < otherBox.x ||
+                          newBox.y > otherBox.y + otherBox.height ||
+                          newBox.y + newBox.height < otherBox.y
+                       );
+                       if (isIntersecting) {
+                          targetIdx = i;
+                          break;
+                       }
+                    }
+                 }
+              }
+
+              // Nếu tìm thấy nét cũ -> Hấp thụ nét mới vào nét cũ
+              if (targetIdx !== -1) {
+                 const targetShape = { ...updatedShapes[targetIdx] };
+                 if (!targetShape.multiPoints) targetShape.multiPoints = [targetShape.points];
+
+                 const targetGroupNode = stage.findOne(`#${targetShape.id}`);
+                 const transform = targetGroupNode.getAbsoluteTransform().copy().invert();
+
+                 // Dịch tọa độ của nét mới sang không gian Local của nét cũ
+                 const newLocalPoints = [];
+                 for (let k = 0; k < newShape.points.length; k += 2) {
+                    const absPoint = newNode.getAbsoluteTransform().point({ x: newShape.points[k], y: newShape.points[k+1] });
+                    const locPoint = transform.point(absPoint);
+                    newLocalPoints.push(locPoint.x, locPoint.y);
+                 }
+
+                 targetShape.multiPoints = [...targetShape.multiPoints, newLocalPoints];
+                 updatedShapes[targetIdx] = targetShape; // Cập nhật hình cũ
+                 updatedShapes.splice(newShapeIdx, 1);   // Xóa bỏ hình mới
+              }
+           }
+        }
+
+        currentLineId.current = null;
+        activeEraserStrokes.current.clear(); // Reset bộ nhớ tia laser
+
+        // Cập nhật an toàn History sau khi gộp
+        setTimeout(() => commitToHistory(updatedShapes), 0);
+        return updatedShapes;
       });
     }
   };
@@ -790,7 +846,7 @@ const Whiteboard = () => {
                 mode={mode}
                 onSelect={() => { if(mode === 'select') setSelectedId(shape.id); }}
 
-                onEraseStart={(e) => handleEraseStart(shape.id, e)}
+                onEraseStart={(e) => handleEraserMove(e)}
 
                 onChange={(newAttrs) => {
                   const snappedAttrs = showGrid ? {
