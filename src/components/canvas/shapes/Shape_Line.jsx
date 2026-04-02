@@ -1,54 +1,88 @@
 import React, { useRef, useEffect } from 'react';
-import { Line, Transformer } from 'react-konva';
+import { Group, Line, Transformer } from 'react-konva';
 
-// this is for pencil
-const LineShape = ({ shapeProps, isSelected, onSelect, onChange, outlineThickness }) => {
-  const shapeRef = useRef();
+const LineShape = ({ shapeProps, isSelected, onSelect, onChange, outlineThickness, mode, onEraseStart }) => {
+  const groupRef = useRef();
   const trRef = useRef();
 
   useEffect(() => {
-    if (isSelected) {
-      trRef.current.nodes([shapeRef.current]);
+    if (isSelected && trRef.current) {
+      trRef.current.nodes([groupRef.current]);
       trRef.current.getLayer().batchDraw();
     }
   }, [isSelected]);
 
+  // Tách các thuộc tính Transform ra cho Group, Line con sẽ nằm ở 0,0
+  const { x, y, scaleX, scaleY, rotation, eraserStrokes, ...lineProps } = shapeProps;
+
   return (
     <React.Fragment>
-      <Line
-        ref={shapeRef}
-        points={shapeProps.points}       // array of x,y coordinates
-        stroke={shapeProps.stroke}       // color of the line
-        strokeWidth={shapeProps.strokeWidth} // thickness
-        tension={0.5}                    // smoothness of line
-        lineCap="round"                  // caps at the end of lines
-        lineJoin="round"                 // smooth corners
-        globalCompositeOperation={
-          shapeProps.tool === 'eraser' ? 'destination-out' : 'source-over'
-        }
-        onClick={onSelect}
-        onTap={onSelect}
-        draggable
+      <Group
+        id={shapeProps.id}
+        ref={groupRef}
+        x={x || 0}
+        y={y || 0}
+        scaleX={scaleX || 1}
+        scaleY={scaleY || 1}
+        rotation={rotation || 0}
+        draggable={mode === 'select'}
+        
+        onMouseDown={(e) => {
+          if (mode === 'eraser') onEraseStart(e);
+          else if (mode === 'select') onSelect();
+        }}
+        
         onDragEnd={(e) => {
-          onChange({
-            ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
-          });
+          if (mode === 'select') {
+            onChange({
+              ...shapeProps,
+              x: e.target.x(),
+              y: e.target.y(),
+            });
+          }
         }}
         onTransformEnd={(e) => {
-          const node = shapeRef.current;
-          onChange({
-            ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            scaleX: node.scaleX(),
-            scaleY: node.scaleY(),
-            rotation: node.rotation(),
-          });
+          if (mode === 'select') {
+            const node = groupRef.current;
+            onChange({
+              ...shapeProps,
+              x: node.x(),
+              y: node.y(),
+              scaleX: node.scaleX(),
+              scaleY: node.scaleY(),
+              rotation: node.rotation(),
+            });
+          }
         }}
-      />
-      {isSelected && <Transformer ref={trRef} borderStrokeWidth={outlineThickness} borderStroke='#7FB9F9' />}
+      >
+        {/* Nét vẽ gốc */}
+        <Line
+          {...lineProps}
+          x={0} y={0} // Đưa về 0 vì Group đã quản lý vị trí x, y
+          points={shapeProps.points}
+          stroke={shapeProps.stroke}
+          strokeWidth={shapeProps.strokeWidth}
+          tension={0.5}
+          lineCap="round"
+          lineJoin="round"
+          hitStrokeWidth={Math.max(20, (shapeProps.strokeWidth || 2) + 10)}
+        />
+
+        {/* Các vết tẩy đục lỗ đính kèm theo nét vẽ */}
+        {eraserStrokes && eraserStrokes.map((stroke, i) => (
+          <Line
+            key={i}
+            points={stroke.points}
+            strokeWidth={stroke.brushSize}
+            stroke="white"
+            lineCap="round"
+            lineJoin="round"
+            globalCompositeOperation="destination-out"
+          />
+        ))}
+      </Group>
+      
+      {isSelected && mode === 'select' && <Transformer ref={trRef} borderStrokeWidth={outlineThickness} borderStroke='#7FB9F9' />}
     </React.Fragment>
   );
 };

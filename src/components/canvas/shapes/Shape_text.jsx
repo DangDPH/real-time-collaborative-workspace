@@ -1,22 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Text, Transformer } from 'react-konva';
+import { Group, Text, Line, Transformer } from 'react-konva';
 import { Html } from 'react-konva-utils';
 
-const Shape_Text = ({ shapeProps, isSelected, onSelect, onChange, outlineThickness }) => {
-  const shapeRef = useRef();
+const Shape_Text = ({ shapeProps, isSelected, onSelect, onChange, outlineThickness, mode, onEraseStart }) => {
+  const groupRef = useRef();
   const trRef = useRef();
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (isSelected && !isEditing && trRef.current) {
-      trRef.current.nodes([shapeRef.current]);
+      trRef.current.nodes([groupRef.current]);
       trRef.current.getLayer().batchDraw();
     }
   }, [isSelected, isEditing]);
 
   useEffect(() => {
-    if (shapeRef.current) {
-      shapeRef.current.getLayer()?.batchDraw();
+    if (groupRef.current) {
+      groupRef.current.getLayer()?.batchDraw();
     }
   }, [shapeProps.text]);
 
@@ -25,45 +25,73 @@ const Shape_Text = ({ shapeProps, isSelected, onSelect, onChange, outlineThickne
     onSelect(); 
   };
 
+  const { x, y, scaleX, scaleY, rotation, eraserStrokes, ...textProps } = shapeProps;
+
   return (
     <React.Fragment>
-      <Text
-        ref={shapeRef}
-        {...shapeProps}
-        text={shapeProps.text}
-        visible={!isEditing}
-        draggable={!isEditing}
-        onClick={onSelect}
-        onDblClick={handleDoubleClick}
-
-        // synchronize text properties with konva Text attributes
-        align={shapeProps.align || 'left'}
-        lineHeight={1.2}
-        padding={5}
-        wrap='word'
-        width={shapeProps.width}
-        height={shapeProps.height}
-
+      <Group
+        id={shapeProps.id}
+        ref={groupRef}
+        x={x || 0}
+        y={y || 0}
+        scaleX={scaleX || 1}
+        scaleY={scaleY || 1}
+        rotation={rotation || 0}
+        draggable={!isEditing && mode === 'select'}
+        
+        onMouseDown={(e) => {
+          if (mode === 'eraser') onEraseStart(e);
+          else if (mode === 'select') onSelect();
+        }}
+        onDblClick={mode === 'select' ? handleDoubleClick : null}
+        
         onDragEnd={(e) => {
-          onChange({ ...shapeProps, x: e.target.x(), y: e.target.y() });
+          if (mode === 'select') {
+            onChange({ ...shapeProps, x: e.target.x(), y: e.target.y() });
+          }
         }}
         onTransformEnd={() => {
-          const node = shapeRef.current;
-          const scaleX = node.scaleX();
-
-          onChange({
-            ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            // do not width<30px to avoid collapsing text
-            width: Math.max(30, node.width() * scaleX),
-            rotation: node.rotation(),
-          });
-          
-          node.scaleX(1);
-          node.scaleY(1);
+          if (mode === 'select') {
+            const node = groupRef.current;
+            const sX = node.scaleX();
+            onChange({
+              ...shapeProps,
+              x: node.x(),
+              y: node.y(),
+              width: Math.max(30, (shapeProps.width || 100) * sX),
+              rotation: node.rotation(),
+            });
+            node.scaleX(1);
+            node.scaleY(1);
+          }
         }}
-      />
+      >
+        <Text
+          {...textProps}
+          x={0} y={0}
+          text={shapeProps.text}
+          visible={!isEditing}
+          align={shapeProps.align || 'left'}
+          lineHeight={1.2}
+          padding={5}
+          wrap='word'
+          width={shapeProps.width}
+          height={shapeProps.height}
+        />
+
+        {/* Các vết tẩy đục lỗ */}
+        {eraserStrokes && eraserStrokes.map((stroke, i) => (
+          <Line
+            key={i}
+            points={stroke.points}
+            strokeWidth={stroke.brushSize}
+            stroke="white"
+            lineCap="round"
+            lineJoin="round"
+            globalCompositeOperation="destination-out"
+          />
+        ))}
+      </Group>
 
       {isEditing && (
         <Html>
@@ -82,8 +110,8 @@ const Shape_Text = ({ shapeProps, isSelected, onSelect, onChange, outlineThickne
             onBlur={() => setIsEditing(false)}
             style={{
               position: 'absolute',
-              top: `${shapeProps.y}px`,
-              left: `${shapeProps.x}px`,
+              top: `${y || 0}px`, // Vẫn bám theo vị trí tuyệt đối của Group
+              left: `${x || 0}px`,
               width: `${shapeProps.width}px`,
               minHeight: '20px',
               fontSize: `${shapeProps.fontSize}px`,
@@ -96,10 +124,8 @@ const Shape_Text = ({ shapeProps, isSelected, onSelect, onChange, outlineThickne
               border: '1px dashed #3b82f6',
               background: 'transparent',
               outline: 'none',
-              transform: `rotate(${shapeProps.rotation || 0}deg)`,
+              transform: `rotate(${rotation || 0}deg)`,
               transformOrigin: 'top left',
-              
-              // NEW ATTRIBUTES for synchronizing with konva Text
               lineHeight: 1.2,
               padding: '5px',
               margin: '0px',
@@ -113,13 +139,11 @@ const Shape_Text = ({ shapeProps, isSelected, onSelect, onChange, outlineThickne
         </Html>
       )}
 
-      {isSelected && !isEditing && (
+      {isSelected && !isEditing && mode === 'select' && (
         <Transformer
           ref={trRef}
-          // HORIZONTAL DRAWING ONLY (vertical dragging will empty the text)
           enabledAnchors={['middle-left', 'middle-right']}
           boundBoxFunc={(oldBox, newBox) => {
-            // lock for width being too small
             if (newBox.width < 30) return oldBox;
             return newBox;
           }}

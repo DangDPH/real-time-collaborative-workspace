@@ -200,33 +200,72 @@ const Whiteboard = () => {
     }
   };
 
+  // Thêm ref này ở đầu component, ngay dưới isDrawing:
+  const currentLineId = useRef(null);
+  const erasingShapeId = useRef(null);
+
+  const handleEraseStart = (id, e) => {
+    erasingShapeId.current = id;
+    isDrawing.current = true;
+
+    const stage = e.target.getStage();
+    const pointerPos = stage.getPointerPosition();
+
+    // Thuật toán InverseTransformPoint: Chuyển Global chuột sang Local của Shape
+    const groupNode = e.currentTarget; 
+    const transform = groupNode.getAbsoluteTransform().copy().invert();
+    const localPos = transform.point(pointerPos);
+
+    setShapes(prev => {
+      const newShapes = [...prev];
+      const idx = newShapes.findIndex(s => s.id === id);
+      if (idx === -1) return prev;
+
+      const shape = { ...newShapes[idx] };
+      if (!shape.eraserStrokes) shape.eraserStrokes = []; // Tạo mảng lưu vết tẩy
+
+      // Lưu nhát tẩy đầu tiên
+      shape.eraserStrokes = [...shape.eraserStrokes, {
+        brushSize,
+        points: [localPos.x, localPos.y, localPos.x, localPos.y]
+      }];
+
+      newShapes[idx] = shape;
+      return newShapes;
+    });
+  };
+
   const handleMouseDown = (e) => {
     const stage = e.target.getStage();
     const pointerPos = stage.getPointerPosition();
     
-    // Check if user clicked on empty area (not on any shape)
     const isOverlay = e.target.id() === 'drawing-overlay';
     const clickedOnEmpty = e.target === stage || isOverlay;
 
     if (clickedOnEmpty) setSelectedId(null);
     
-    // In select mode, allow panning by dragging on empty space
     if (mode === 'select' && clickedOnEmpty) {
       isPanning.current = true;
       lastPointerPos.current = pointerPos;
       return;
     }
 
-    if (mode === 'select') return;
+    if (mode === 'select' || mode === 'eraser') return;
 
     isDrawing.current = true;
-    const pos = stage.getPointerPosition();
+    
+    // Tính toán tọa độ chính xác ngay cả khi canvas bị kéo (pan)
+    const x = pointerPos.x - stage.x();
+    const y = pointerPos.y - stage.y();
+
+    const newId = uuidv4();
+    currentLineId.current = newId; // Lưu ID của nét đang vẽ
 
     const newLine = { 
-      id: uuidv4(), 
+      id: newId, 
       type: 'LINE', 
       tool: mode, 
-      points: [pos.x, pos.y, pos.x, pos.y], 
+      points: [x, y, x, y], 
       stroke: mode === 'eraser' ? '#ffffff' : brushColor, 
       strokeWidth: brushSize,
       tension: 0.5,
@@ -234,11 +273,12 @@ const Whiteboard = () => {
       lineJoin: 'round',
       globalCompositeOperation: mode === 'eraser' ? 'destination-out' : 'source-over'
     };
-    setShapes([...shapes, newLine]);
+    
+    setShapes(prev => [...prev, newLine]);
   };
 
   const handleMouseMove = (e) => {
-    // Handle panning in select mode
+    // 1. Xử lý kéo bản đồ (Panning)
     if (isPanning.current && mode === 'select') {
       const stage = e.target.getStage();
       const pointerPos = stage.getPointerPosition();
@@ -254,16 +294,67 @@ const Whiteboard = () => {
       lastPointerPos.current = pointerPos;
       return;
     }
-    
-    if (mode === 'select' || !isDrawing.current) return;
-    const stage = e.target.getStage();
-    const point = stage.getPointerPosition();
 
-    const lastShapes = [...shapes];
-    const lastLine = lastShapes[lastShapes.length - 1];
-    lastLine.points = lastLine.points.concat([point.x, point.y]);
-    lastShapes.splice(lastShapes.length - 1, 1, lastLine);
-    setShapes(lastShapes);
+    if (!isDrawing.current) return;
+    
+    const stage = e.target.getStage();
+    const pointerPos = stage.getPointerPosition();
+
+    // ==========================================
+    // 2. THÊM MỚI: LOGIC ĐỤC LỖ (MASKING) CHO ERASER
+    // ==========================================
+    if (mode === 'eraser' && erasingShapeId.current) {
+      // Tìm Object (Group) đang bị tẩy dựa vào ID
+      const groupNode = stage.findOne(`#${erasingShapeId.current}`);
+      if (!groupNode) return;
+
+      // Chuyển tọa độ chuột (Global) sang hệ tọa độ bên trong Group đó (Local)
+      const transform = groupNode.getAbsoluteTransform().copy().invert();
+      const localPos = transform.point(pointerPos);
+
+      setShapes((prev) => {
+        const idx = prev.findIndex(s => s.id === erasingShapeId.current);
+        if (idx === -1) return prev;
+
+        const newShapes = [...prev];
+        const shape = { ...newShapes[idx] };
+        
+        if (!shape.eraserStrokes || shape.eraserStrokes.length === 0) return prev;
+
+        // Clone mảng nét tẩy và lấy nét cuối cùng ra cập nhật
+        const strokes = [...shape.eraserStrokes];
+        const currentStroke = { ...strokes[strokes.length - 1] };
+        
+        currentStroke.points = currentStroke.points.concat([localPos.x, localPos.y]);
+        strokes[strokes.length - 1] = currentStroke;
+        
+        shape.eraserStrokes = strokes;
+        newShapes[idx] = shape;
+        return newShapes;
+      });
+      return; // Cực kỳ quan trọng: Dừng ở đây, không chạy xuống logic bút vẽ!
+    }
+
+    // ==========================================
+    // 3. LOGIC BÚT VẼ BÌNH THƯỜNG (PEN)
+    // ==========================================
+    if (mode === 'select' || mode === 'eraser' || !currentLineId.current) return;
+    
+    const x = pointerPos.x - stage.x();
+    const y = pointerPos.y - stage.y();
+
+    setShapes((prevShapes) => {
+      const index = prevShapes.findIndex(s => s.id === currentLineId.current);
+      if (index === -1) return prevShapes;
+
+      const updatedShapes = [...prevShapes];
+      const updatedLine = { ...updatedShapes[index] }; 
+      
+      updatedLine.points = updatedLine.points.concat([x, y]);
+      updatedShapes[index] = updatedLine;
+      
+      return updatedShapes;
+    });
   };
 
   const handleMouseUp = () => {
@@ -273,9 +364,22 @@ const Whiteboard = () => {
     }
     if (isDrawing.current) {
       isDrawing.current = false;
-      commitToHistory(shapes); // Lưu lại nét vẽ vào lịch sử khi nhả chuột
+      currentLineId.current = null; // Reset ID
+      erasingShapeId.current = null;
+      
+      // Lấy state mới nhất một cách an toàn để lưu vào history (tránh bị lưu thiếu nét cuối)
+      setShapes(currentShapes => {
+        setTimeout(() => commitToHistory(currentShapes), 0);
+        return currentShapes;
+      });
     }
   };
+
+  // Reset panning when mouse leaves canvas to prevent drag continuation
+  const handleMouseLeave = () => {
+    isPanning.current = false;
+    isDrawing.current = false;
+  };  
 
   const updateSelectedShape = (key, value) => {
     const newShapes = shapes.slice();
@@ -643,6 +747,7 @@ const Whiteboard = () => {
           width={stageSize.width} height={stageSize.height}
           style={{ cursor: mode === 'pen' ? 'crosshair' : (mode === 'eraser' ? 'cell' : (mode === 'select' ? 'grab' : 'default')), pointerEvents: 'auto' }}
           onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
           onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp}
         >
 
@@ -682,7 +787,11 @@ const Whiteboard = () => {
                 shape={shape}
                 isSelected={shape.id === selectedId}
                 outlineThickness={outlineThickness}
+                mode={mode}
                 onSelect={() => { if(mode === 'select') setSelectedId(shape.id); }}
+
+                onEraseStart={(e) => handleEraseStart(shape.id, e)}
+
                 onChange={(newAttrs) => {
                   const snappedAttrs = showGrid ? {
                     ...newAttrs,
@@ -700,14 +809,16 @@ const Whiteboard = () => {
               />
             ))}
 
-            {mode !== 'select' && (
+            {mode === 'pen' && (
               <Rect
                 id="drawing-overlay"
-                x={0}
-                y={0}
+                // Bù trừ tọa độ theo vị trí của Stage
+                x={-stagePosition.x} 
+                y={-stagePosition.y}
                 width={stageSize.width}
                 height={stageSize.height}
                 fill="transparent"
+                listening={true} // Đảm bảo nó luôn lắng nghe sự kiện vẽ
               />
             )}
 
